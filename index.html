@@ -4,12 +4,649 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
 <meta name="theme-color" content="#060a14"/>
+<!-- Versi 1 file: CSS & JavaScript sudah ada di dalam file ini -->
 <title>SaltingEgg IoT - Smart Egg Brining System</title>
 
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="style.css"/>
+<style>
+/* =========================================================
+   SaltingEgg IoT — tampilan dashboard beranimasi
+   ========================================================= */
+:root {
+  --bg: #060a14;
+  --card: rgba(13, 21, 40, .86);
+  --line: rgba(148, 163, 184, .14);
+  --line2: rgba(148, 163, 184, .26);
+  --text: #e2e8f0;
+  --muted: #94a3b8;
+  --dim: #64748b;
+  --amber: #f59e0b;
+  --orange: #f97316;
+  --cyan: #22d3ee;
+  --blue: #60a5fa;
+  --emerald: #34d399;
+  --violet: #a78bfa;
+  --pink: #f472b6;
+  --rose: #fb7185;
+  --wh: 195;          /* warna air (hue), berubah mengikuti suhu */
+  --lvl: 0%;          /* tinggi air di kotak */
+  --bd: 5s;           /* kecepatan gelembung */
+  --egg: #e9f3ef;     /* warna cangkang telur */
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  color: var(--text);
+  background:
+    radial-gradient(900px 500px at 8% -10%, rgba(245, 158, 11, .10), transparent 60%),
+    radial-gradient(800px 600px at 110% 15%, rgba(34, 211, 238, .08), transparent 60%),
+    radial-gradient(700px 500px at 30% 120%, rgba(52, 211, 153, .07), transparent 60%),
+    var(--bg);
+  background-attachment: fixed;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+button { font: inherit; color: inherit; }
+svg { display: block; }
+.mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+.trunc { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sub { margin: 6px 0 0; font-size: 11px; color: var(--dim); line-height: 1.5; }
+.sub b { color: var(--muted); }
+.big { font-size: 30px; font-weight: 800; letter-spacing: -.02em; color: #fff; }
+.unit { margin-left: 4px; font-size: 13px; font-weight: 700; color: var(--muted); }
+.row-between { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+
+/* ---------- Header ---------- */
+.topbar {
+  position: sticky; top: 0; z-index: 40;
+  background: rgba(6, 10, 20, .78);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--line);
+}
+.topbar-in {
+  max-width: 1240px; margin: 0 auto;
+  padding: calc(12px + env(safe-area-inset-top)) 16px 12px;
+  display: flex; align-items: center; gap: 14px;
+}
+.brand { display: flex; align-items: center; gap: 10px; margin-right: auto; }
+.brand h1 { margin: 0; font-size: 16px; font-weight: 800; letter-spacing: .01em; }
+.brand p { margin: 1px 0 0; font-size: 11px; color: var(--muted); }
+.logo {
+  width: 36px; height: 36px; border-radius: 12px;
+  display: grid; place-items: center;
+  background: linear-gradient(135deg, rgba(245, 158, 11, .25), rgba(34, 211, 238, .15));
+  border: 1px solid rgba(245, 158, 11, .35);
+}
+.logo svg { width: 18px; height: 18px; fill: #fde68a; }
+
+.tabs { display: none; gap: 4px; padding: 4px; border-radius: 14px; background: rgba(15, 23, 42, .7); border: 1px solid var(--line); }
+.tab { border: 0; background: transparent; padding: 8px 14px; border-radius: 10px; font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; }
+.tab:hover { color: #fff; }
+.tab.is-active { background: rgba(245, 158, 11, .16); color: #fcd34d; }
+
+.pill {
+  display: flex; align-items: center; gap: 7px;
+  padding: 5px 11px; border-radius: 999px; border: 1px solid;
+  font-size: 11px; font-weight: 700; white-space: nowrap;
+}
+.pill-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; box-shadow: 0 0 0 0 currentColor; }
+.pill.ok { color: #6ee7b7; background: rgba(6, 78, 59, .45); border-color: rgba(52, 211, 153, .45); }
+.pill.ok .pill-dot { animation: ping 2s ease-out infinite; }
+.pill.wait { color: #fcd34d; background: rgba(120, 53, 15, .45); border-color: rgba(245, 158, 11, .45); }
+.pill.wait .pill-dot { animation: blink 1.2s ease-in-out infinite; }
+.pill.bad { color: #fda4af; background: rgba(127, 29, 29, .45); border-color: rgba(251, 113, 133, .45); }
+.pill.flash .pill-dot { transform: scale(1.6); }
+
+/* ---------- Layout ---------- */
+.app { max-width: 1240px; margin: 0 auto; padding: 16px 14px calc(120px + env(safe-area-inset-bottom)); overflow-x: hidden; }
+.slider { position: relative; overflow: hidden; margin: 0 -14px; transition: height .35s ease; touch-action: pan-y; }
+.track { display: flex; align-items: flex-start; will-change: transform; transition: transform .45s cubic-bezier(.22, .8, .25, 1); }
+.track.dragging { transition: none; }
+.page { flex: 0 0 100%; min-width: 0; padding: 0 14px 4px; box-sizing: border-box; }
+.page:not(.is-active) { pointer-events: none; }
+.page { opacity: .35; transition: opacity .45s; }
+.page.is-active { opacity: 1; }
+.dash { display: grid; gap: 14px; grid-template-columns: 1fr; }
+.stack { display: grid; gap: 14px; }
+
+@media (min-width: 720px) {
+  .dash { grid-template-columns: 1fr 1fr; }
+  .scene-card, .span2 { grid-column: 1 / -1; }
+}
+@media (min-width: 1100px) {
+  .dash { grid-template-columns: repeat(4, 1fr); }
+  .scene-card { grid-column: span 2; grid-row: span 2; }
+  .span2 { grid-column: span 2; }
+}
+
+/* ---------- Card ---------- */
+.card {
+  position: relative; overflow: hidden;
+  background: linear-gradient(180deg, rgba(17, 28, 52, .88), rgba(10, 16, 32, .88));
+  border: 1px solid var(--line);
+  border-radius: 20px; padding: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .25);
+}
+.card-h { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; position: relative; z-index: 2; }
+.card-t { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: #cbd5e1; }
+.dot { width: 8px; height: 8px; border-radius: 3px; }
+.dot.cyan { background: var(--cyan); box-shadow: 0 0 10px var(--cyan); }
+.dot.blue { background: var(--blue); box-shadow: 0 0 10px var(--blue); }
+.dot.amber { background: var(--amber); box-shadow: 0 0 10px var(--amber); }
+.dot.emerald { background: var(--emerald); box-shadow: 0 0 10px var(--emerald); }
+.dot.violet { background: var(--violet); box-shadow: 0 0 10px var(--violet); }
+.dot.pink { background: var(--pink); box-shadow: 0 0 10px var(--pink); }
+
+.tag { font-size: 10px; font-weight: 800; letter-spacing: .03em; padding: 3px 9px; border-radius: 999px; border: 1px solid; white-space: nowrap; }
+.tag.ok { color: #6ee7b7; background: rgba(6, 78, 59, .5); border-color: rgba(52, 211, 153, .4); }
+.tag.warn { color: #fcd34d; background: rgba(120, 53, 15, .5); border-color: rgba(245, 158, 11, .4); }
+.tag.bad { color: #fda4af; background: rgba(127, 29, 29, .5); border-color: rgba(251, 113, 133, .45); }
+.tag.info { color: #93c5fd; background: rgba(30, 58, 138, .45); border-color: rgba(96, 165, 250, .4); }
+.tag.idle { color: var(--muted); background: rgba(30, 41, 59, .6); border-color: var(--line2); }
+
+.bar { height: 6px; border-radius: 99px; background: rgba(30, 41, 59, .9); overflow: hidden; margin-top: 10px; }
+.bar-fill { height: 100%; width: 0; border-radius: 99px; transition: width .8s ease; }
+.bar-fill.pink { background: linear-gradient(90deg, #f9a8d4, var(--pink)); box-shadow: 0 0 10px rgba(244, 114, 182, .6); }
+.bar-fill.emerald { background: linear-gradient(90deg, #6ee7b7, var(--emerald)); box-shadow: 0 0 10px rgba(52, 211, 153, .6); }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 10px 14px; border-radius: 12px; cursor: pointer;
+  border: 1px solid var(--line2); background: rgba(30, 41, 59, .7);
+  font-size: 13px; font-weight: 700; color: #e2e8f0; transition: transform .1s, background .2s;
+}
+.btn:hover { background: rgba(51, 65, 85, .8); }
+.btn:active { transform: scale(.97); }
+.btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.btn.primary { background: linear-gradient(90deg, var(--amber), var(--orange)); border-color: transparent; color: #1c1206; }
+.btn.danger { color: #fda4af; border-color: rgba(251, 113, 133, .4); background: rgba(127, 29, 29, .25); }
+.btn.danger.solid { background: linear-gradient(90deg, #f43f5e, var(--orange)); color: #1c0606; border-color: transparent; }
+.btn.small { padding: 7px 12px; font-size: 12px; margin-top: 12px; }
+.link { border: 0; background: none; padding: 0; font-size: 11px; font-weight: 700; color: #fcd34d; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
+
+/* =========================================================
+   KOTAK PENGASINAN (scene)
+   ========================================================= */
+.scene-card { display: flex; flex-direction: column; }
+.day-chip {
+  border: 1px solid rgba(245, 158, 11, .45); background: rgba(120, 53, 15, .55); color: #fcd34d;
+  font-size: 12px; font-weight: 700; letter-spacing: .08em; padding: 5px 11px; border-radius: 10px; cursor: pointer;
+}
+.scene {
+  position: relative; flex: 1; min-height: 360px; border-radius: 16px; overflow: hidden;
+  background: radial-gradient(120% 80% at 50% 0%, rgba(30, 41, 59, .55), rgba(2, 6, 17, .9));
+  border: 1px solid var(--line);
+}
+@media (min-width: 1100px) { .scene { min-height: 440px; } }
+
+.cord { position: absolute; left: 50%; top: 0; width: 2px; height: 26px; margin-left: -1px; background: #475569; }
+.scene-lamp { position: absolute; left: 50%; top: 22px; width: 110px; transform: translateX(-50%); z-index: 6; animation: sway 6s ease-in-out infinite; transform-origin: 50% -22px; }
+.scene-lamp .shade { fill: #334155; stroke: #64748b; stroke-width: 1.5; }
+.scene-lamp .bulb-g { fill: #475569; transition: fill .4s, filter .4s; }
+.scene.on .scene-lamp .shade { fill: #78350f; stroke: #f59e0b; }
+.scene.on .scene-lamp .bulb-g { fill: #fef3c7; filter: drop-shadow(0 0 10px #fde68a) drop-shadow(0 0 22px #f59e0b); }
+.cone {
+  position: absolute; left: 50%; top: 70px; width: 120%; height: 78%;
+  transform: translateX(-50%); z-index: 1; pointer-events: none;
+  clip-path: polygon(45% 0, 55% 0, 92% 100%, 8% 100%);
+  background: linear-gradient(180deg, rgba(253, 224, 71, .30), rgba(253, 224, 71, .04) 70%, transparent);
+  opacity: 0; transition: opacity .6s;
+}
+.scene.on .cone { opacity: 1; animation: flicker 4s ease-in-out infinite; }
+
+.tank {
+  position: absolute; left: 50%; bottom: 26px; transform: translateX(-50%);
+  width: min(88%, 520px); height: 62%; z-index: 3; overflow: hidden;
+  border: 3px solid rgba(186, 230, 253, .35); border-top: 0; border-radius: 0 0 24px 24px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, .05), rgba(255, 255, 255, .01) 40%, rgba(255, 255, 255, .04));
+  box-shadow: inset 0 -10px 30px rgba(34, 211, 238, .08), 0 18px 40px rgba(0, 0, 0, .35);
+  transition: border-color .4s, box-shadow .4s;
+}
+.tank::before { /* bibir kotak */
+  content: ''; position: absolute; left: -3px; right: -3px; top: 0; height: 6px; z-index: 8;
+  background: linear-gradient(180deg, rgba(186, 230, 253, .5), rgba(186, 230, 253, 0));
+}
+.tank::after { /* kilau kaca */
+  content: ''; position: absolute; left: 8%; top: 8%; width: 10px; height: 70%; z-index: 7; border-radius: 10px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, .18), rgba(255, 255, 255, 0)); pointer-events: none;
+}
+.scene.on .tank { box-shadow: inset 0 30px 60px rgba(253, 224, 71, .10), 0 18px 40px rgba(0, 0, 0, .35); }
+.tank.low { border-color: rgba(251, 113, 133, .7); animation: lowPulse 1.6s ease-in-out infinite; }
+.floor { position: absolute; left: 6%; right: 6%; bottom: 14px; height: 12px; border-radius: 50%; background: radial-gradient(closest-side, rgba(0, 0, 0, .55), transparent); }
+
+/* Telur */
+.eggs { position: absolute; left: 44px; right: 78px; bottom: 6px; height: 50%; z-index: 1; }
+.egg-row { position: absolute; left: 0; right: 0; display: flex; justify-content: center; gap: 4px; }
+.egg-row.back { bottom: 32%; filter: brightness(.82); }
+.egg-row.front { bottom: 0; }
+.egg {
+  width: clamp(26px, 8.5vw, 50px); aspect-ratio: .78;
+  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+  background: radial-gradient(circle at 35% 28%, #ffffff 0, var(--egg) 42%, color-mix(in srgb, var(--egg) 70%, #3f5f57) 100%);
+  box-shadow: inset -4px -6px 10px rgba(0, 0, 0, .18), 0 4px 6px rgba(0, 0, 0, .25);
+  transform: rotate(var(--r, 0deg));
+  animation: bob var(--bob, 4s) ease-in-out infinite; animation-delay: var(--dl, 0s);
+  transition: background .8s;
+}
+@supports not (background: color-mix(in srgb, red, blue)) {
+  .egg { background: radial-gradient(circle at 35% 28%, #fff 0, var(--egg) 45%, #9fb9b0 100%); }
+}
+
+/* Air garam */
+.water { position: absolute; left: 0; right: 0; bottom: 0; height: var(--lvl); z-index: 2; transition: height 1.4s cubic-bezier(.4, 0, .2, 1); }
+.water::before {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(180deg, hsla(var(--wh), 75%, 58%, .50), hsla(var(--wh), 70%, 28%, .78));
+  transition: background 1s;
+}
+.water::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(180deg, rgba(251, 146, 60, .55), rgba(234, 88, 12, .35));
+  opacity: var(--warm, 0); transition: opacity 1s; mix-blend-mode: soft-light;
+}
+.wave { position: absolute; left: 0; top: -13px; width: 200%; height: 14px; animation: wave 7s linear infinite; }
+.wave svg { width: 100%; height: 100%; }
+.wave path { fill: hsla(var(--wh), 75%, 58%, .50); transition: fill 1s; }
+.wave.b { top: -10px; opacity: .55; animation-duration: 11s; animation-direction: reverse; }
+.water-in { position: absolute; inset: 0; overflow: hidden; }
+.bubble {
+  position: absolute; bottom: -12px; border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, .55); background: rgba(255, 255, 255, .08);
+  animation: rise calc(var(--bd) * var(--f, 1)) linear infinite; animation-delay: var(--dl, 0s);
+}
+#salt { position: absolute; inset: 0; transition: opacity 1s; }
+.speck { position: absolute; width: 3px; height: 3px; background: rgba(255, 255, 255, .85); border-radius: 1px; animation: drift var(--d, 8s) ease-in-out infinite; animation-delay: var(--dl, 0s); }
+
+.lvl-tag {
+  position: absolute; left: 52px; bottom: calc(var(--lvl) + 6px); z-index: 6;
+  display: flex; align-items: baseline; gap: 5px;
+  padding: 3px 8px; border-radius: 8px;
+  background: rgba(2, 6, 23, .72); border: 1px solid rgba(96, 165, 250, .45);
+  font-size: 12px; color: #bfdbfe; transition: bottom 1.4s cubic-bezier(.4, 0, .2, 1);
+}
+.lvl-tag small { font-size: 9px; color: var(--muted); }
+.tank.low .lvl-tag { border-color: rgba(251, 113, 133, .7); color: #fecdd3; }
+
+/* Embun di kaca (kelembaban dalam) */
+.drops { position: absolute; left: 0; right: 0; top: 0; height: 55%; z-index: 4; opacity: .25; transition: opacity 1s; pointer-events: none; }
+.droplet { position: absolute; width: 5px; height: 7px; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; background: rgba(186, 230, 253, .65); box-shadow: inset -1px -1px 1px rgba(255, 255, 255, .5); animation: slide var(--d, 9s) ease-in infinite; animation-delay: var(--dl, 0s); }
+.hum-chip {
+  position: absolute; left: 52px; top: 10px; z-index: 6;
+  display: flex; align-items: center; gap: 5px; padding: 3px 8px; border-radius: 8px;
+  background: rgba(2, 6, 23, .7); border: 1px solid rgba(34, 211, 238, .35); font-size: 10px; color: var(--muted);
+}
+.hum-chip svg { width: 11px; height: 11px; fill: var(--cyan); }
+.hum-chip b { color: #a5f3fc; }
+
+/* Termometer di dalam kotak */
+.thermo { position: absolute; right: 12px; bottom: 14px; height: 74%; width: 30px; z-index: 6; display: flex; flex-direction: column; align-items: center; }
+.thermo-lbl { font-size: 10px; font-weight: 700; color: #fde68a; background: rgba(2, 6, 23, .75); padding: 2px 5px; border-radius: 6px; margin-bottom: 4px; white-space: nowrap; }
+.thermo-tube { position: relative; flex: 1; width: 12px; border-radius: 10px 10px 0 0; background: rgba(15, 23, 42, .85); border: 2px solid rgba(226, 232, 240, .55); border-bottom: 0; overflow: hidden; }
+.thermo-fill { position: absolute; left: 1px; right: 1px; bottom: 0; height: var(--t, 0%); background: var(--tc, #64748b); border-radius: 6px 6px 0 0; transition: height 1s, background 1s; }
+.thermo-bulb { width: 22px; height: 22px; margin-top: -3px; border-radius: 50%; background: var(--tc, #64748b); border: 2px solid rgba(226, 232, 240, .55); box-shadow: 0 0 12px var(--tc, transparent); transition: background 1s; }
+
+.scene-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 12px; }
+@media (min-width: 560px) { .scene-stats { grid-template-columns: repeat(4, 1fr); } }
+.stat { padding: 9px 11px; border-radius: 12px; background: rgba(15, 23, 42, .65); border: 1px solid var(--line); }
+.stat span { display: block; font-size: 10px; color: var(--dim); text-transform: uppercase; letter-spacing: .05em; font-weight: 700; }
+.stat b { display: block; margin-top: 2px; font-size: 15px; color: #fff; }
+
+/* =========================================================
+   SENSOR KETINGGIAN AIR
+   ========================================================= */
+.lvl-wrap { display: flex; align-items: center; gap: 18px; }
+.lvl-tube { position: relative; flex: 0 0 66px; height: 160px; border-radius: 16px; overflow: hidden; background: #0a1222; border: 2px solid rgba(96, 165, 250, .35); }
+.lvl-fill { position: absolute; left: 0; right: 0; bottom: 0; height: 0; transition: height 1.2s cubic-bezier(.4, 0, .2, 1), background .6s; background: linear-gradient(180deg, rgba(96, 165, 250, .85), rgba(37, 99, 235, .9)); --wh: 215; }
+.lvl-fill.warn { background: linear-gradient(180deg, rgba(251, 191, 36, .85), rgba(217, 119, 6, .9)); --wh: 40; }
+.lvl-fill.bad { background: linear-gradient(180deg, rgba(251, 113, 133, .9), rgba(225, 29, 72, .9)); --wh: 350; }
+.lvl-fill .wave { top: -9px; height: 10px; }
+.lvl-fill .wave path { fill: hsla(var(--wh), 90%, 70%, .85); }
+.lvl-tick { position: absolute; left: 0; width: 12px; height: 1px; background: rgba(226, 232, 240, .35); z-index: 2; }
+.lvl-low { position: absolute; left: 0; right: 0; bottom: 20%; border-top: 1px dashed rgba(251, 113, 133, .8); z-index: 2; }
+.lvl-low span { position: absolute; right: 3px; top: -13px; font-size: 8px; color: #fda4af; font-weight: 700; }
+.lvl-info { min-width: 0; }
+.delta { display: inline-flex; align-items: center; gap: 5px; margin-top: 8px; padding: 4px 9px; border-radius: 9px; font-size: 12px; font-weight: 700; background: rgba(30, 41, 59, .7); color: var(--muted); }
+.delta.down { color: #fda4af; background: rgba(127, 29, 29, .35); }
+.delta.up { color: #6ee7b7; background: rgba(6, 78, 59, .35); }
+
+/* =========================================================
+   LAMPU
+   ========================================================= */
+.lamp-body { display: flex; align-items: center; gap: 18px; }
+.bulb-wrap { position: relative; flex: 0 0 92px; height: 112px; display: grid; place-items: center; }
+.bulb { width: 76px; height: 100px; overflow: visible; position: relative; z-index: 2; }
+.bulb .glass { fill: #1e293b; stroke: #64748b; stroke-width: 2; transition: fill .4s, stroke .4s; }
+.bulb .fil { fill: none; stroke: #64748b; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: stroke .4s; }
+.bulb .cap { fill: #475569; }
+.bulb .rays line { stroke: #fde68a; stroke-width: 3; stroke-linecap: round; opacity: 0; transition: opacity .4s; }
+.bulb-halo { position: absolute; width: 120px; height: 120px; border-radius: 50%; top: -10px; background: radial-gradient(closest-side, rgba(253, 224, 71, .55), rgba(245, 158, 11, .15) 60%, transparent); opacity: 0; transition: opacity .5s; }
+.lamp-card.on .bulb .glass { fill: #fef3c7; stroke: #fbbf24; }
+.lamp-card.on .bulb .fil { stroke: #f97316; }
+.lamp-card.on .bulb .rays line { opacity: 1; animation: rays 1.8s ease-in-out infinite; }
+.lamp-card.on .bulb-halo { opacity: 1; animation: halo 2.4s ease-in-out infinite; }
+.lamp-card.on { border-color: rgba(245, 158, 11, .35); }
+.lamp-ctl .big { font-size: 24px; margin: 0; }
+.lamp-card.on #lamp-state { color: #fcd34d; }
+
+.switch { position: relative; margin-top: 12px; width: 84px; height: 40px; border-radius: 999px; cursor: pointer; border: 1px solid var(--line2); background: #1e293b; transition: background .3s, box-shadow .3s; padding: 0; }
+.switch .knob { position: absolute; top: 4px; left: 4px; width: 30px; height: 30px; border-radius: 50%; background: #0f172a; border: 1px solid var(--line2); transition: transform .3s cubic-bezier(.4, 0, .2, 1), background .3s; }
+.switch .sw-txt { position: absolute; top: 50%; transform: translateY(-50%); font-size: 11px; font-weight: 800; letter-spacing: .05em; }
+.switch .sw-txt.on { left: 13px; color: #1c1206; opacity: 0; }
+.switch .sw-txt.off { right: 11px; color: var(--muted); }
+.switch.on { background: linear-gradient(90deg, var(--amber), var(--orange)); border-color: transparent; box-shadow: 0 0 22px rgba(245, 158, 11, .5); }
+.switch.on .knob { transform: translateX(44px); background: #fff7ed; }
+.switch.on .sw-txt.on { opacity: 1; }
+.switch.on .sw-txt.off { opacity: 0; }
+.switch.pending { opacity: .7; }
+
+/* =========================================================
+   SUHU AIR
+   ========================================================= */
+.temp-card .heat { position: absolute; inset: auto 0 0 0; height: 70%; pointer-events: none; opacity: var(--heat, 0); transition: opacity 1s; z-index: 0; }
+.heat span { position: absolute; bottom: -20px; width: 40px; height: 80px; border-radius: 50%; border-left: 2px solid rgba(251, 146, 60, .35); animation: heat 3.5s ease-in infinite; }
+.heat span:nth-child(1) { left: 15%; }
+.heat span:nth-child(2) { left: 48%; animation-delay: 1.1s; }
+.heat span:nth-child(3) { left: 78%; animation-delay: 2.2s; }
+.temp-card > *:not(.heat) { position: relative; z-index: 1; }
+.mini-thermo { position: relative; width: 14px; height: 54px; border-radius: 10px; border: 2px solid rgba(226, 232, 240, .45); background: #0a1222; overflow: hidden; }
+.mini-thermo-fill { position: absolute; left: 0; right: 0; bottom: 0; height: 0; background: var(--tc, #64748b); transition: height 1s, background 1s; }
+.temp-scale { position: relative; margin-top: 16px; }
+.temp-bar { height: 10px; border-radius: 99px; background: linear-gradient(90deg, #38bdf8, #34d399 35%, #facc15 62%, #f97316 80%, #ef4444); opacity: .85; }
+.temp-marker { position: absolute; top: -5px; left: 0; width: 20px; height: 20px; margin-left: -10px; border-radius: 50%; background: #fff; border: 4px solid var(--tc, #64748b); box-shadow: 0 0 14px var(--tc, transparent); transition: left 1s cubic-bezier(.4, 0, .2, 1), border-color 1s; opacity: .4; }
+.temp-marker.has { opacity: 1; }
+.scale-lbl { display: flex; justify-content: space-between; margin-top: 6px; font-size: 9px; color: var(--dim); }
+
+/* =========================================================
+   GARAM
+   ========================================================= */
+.garam-body { display: flex; align-items: center; gap: 16px; }
+.shaker { position: relative; flex: 0 0 70px; height: 96px; border-radius: 14px; background: linear-gradient(180deg, rgba(244, 114, 182, .08), rgba(244, 114, 182, .02)); border: 1px solid rgba(244, 114, 182, .25); overflow: hidden; }
+.shaker::after { content: ''; position: absolute; left: 8px; right: 8px; bottom: 6px; height: var(--pile, 10%); border-radius: 40% 40% 6px 6px; background: linear-gradient(180deg, #fff, #f5d0e6); opacity: .85; transition: height 1s; }
+.crystal { position: absolute; top: -8px; width: 5px; height: 5px; background: #fff; border-radius: 1px; opacity: 0; animation: fall var(--d, 2.4s) linear infinite; animation-delay: var(--dl, 0s); }
+.garam-info { flex: 1; min-width: 0; }
+
+/* =========================================================
+   KELEMBABAN
+   ========================================================= */
+.hum-grid { display: grid; grid-template-columns: 1fr; gap: 14px; }
+@media (min-width: 520px) { .hum-grid { grid-template-columns: 1fr 1fr; } }
+.hum-item { display: flex; align-items: center; gap: 14px; padding: 12px; border-radius: 16px; background: rgba(15, 23, 42, .55); border: 1px solid var(--line); }
+.ring { position: relative; flex: 0 0 108px; height: 108px; }
+.ring svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+.ring-bg { fill: none; stroke: rgba(51, 65, 85, .7); stroke-width: 8; }
+.ring-fg { fill: none; stroke: var(--rc, var(--cyan)); stroke-width: 8; stroke-linecap: round; stroke-dasharray: 251.3; stroke-dashoffset: 251.3; transition: stroke-dashoffset 1.2s cubic-bezier(.4, 0, .2, 1); filter: drop-shadow(0 0 5px var(--rc, var(--cyan))); }
+#hum-out-box { --rc: var(--violet); }
+.ring-c { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 2; }
+.ring-c b { font-size: 24px; font-weight: 800; color: #fff; }
+.ring-c small { font-size: 9px; color: var(--muted); font-weight: 700; }
+.mist, .rain { position: absolute; inset: 14px; border-radius: 50%; overflow: hidden; opacity: var(--h, .15); transition: opacity 1s; }
+.mist i { position: absolute; width: 70%; height: 40%; border-radius: 50%; background: radial-gradient(closest-side, color-mix(in srgb, var(--rc, #22d3ee) 45%, transparent), transparent); animation: mist 7s ease-in-out infinite; }
+.mist i:nth-child(1) { top: 10%; left: -20%; }
+.mist i:nth-child(2) { top: 40%; left: 30%; animation-delay: -2.5s; animation-duration: 9s; }
+.mist i:nth-child(3) { top: 65%; left: -10%; animation-delay: -5s; }
+.rain i { position: absolute; top: -10px; width: 2px; height: 8px; border-radius: 2px; background: var(--rc, #22d3ee); opacity: .8; animation: rain 1.8s linear infinite; }
+.rain i:nth-child(1) { left: 25%; }
+.rain i:nth-child(2) { left: 45%; animation-delay: .6s; }
+.rain i:nth-child(3) { left: 62%; animation-delay: 1.1s; }
+.rain i:nth-child(4) { left: 78%; animation-delay: .3s; }
+.hum-lbl { margin: 0 0 6px; font-size: 14px; font-weight: 800; color: #fff; }
+.hum-meta { min-width: 0; }
+
+/* =========================================================
+   SIKLUS / HARI
+   ========================================================= */
+.day-main { display: flex; align-items: center; gap: 18px; }
+.day-num { display: flex; align-items: baseline; gap: 6px; }
+.day-num > span { font-size: 54px; font-weight: 800; line-height: 1; color: #fff; background: linear-gradient(180deg, #fff, #6ee7b7); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.day-num small { font-size: 13px; color: var(--muted); font-weight: 700; }
+.eta { margin: 0; font-size: 13px; font-weight: 700; color: #6ee7b7; }
+.pips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+.pip { width: 26px; height: 32px; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; display: grid; place-items: center; font-size: 10px; font-weight: 800; color: var(--dim); background: rgba(30, 41, 59, .8); border: 1px solid var(--line2); }
+.pip.done { background: linear-gradient(180deg, #d1fae5, #6ee7b7); color: #064e3b; border-color: transparent; }
+.pip.now { background: linear-gradient(180deg, #fef3c7, #f59e0b); color: #451a03; border-color: transparent; animation: pipPulse 1.6s ease-in-out infinite; }
+
+/* =========================================================
+   MQTT
+   ========================================================= */
+.mq-body { display: flex; align-items: center; gap: 16px; }
+.sig { flex: 0 0 64px; height: 64px; border-radius: 16px; background: rgba(15, 23, 42, .7); border: 1px solid var(--line); display: grid; place-items: center; }
+.sig svg { width: 46px; height: 46px; }
+.sig .s0 { fill: var(--dim); }
+.sig path { fill: none; stroke: var(--dim); stroke-width: 4; stroke-linecap: round; opacity: .35; }
+.sig.ok .s0 { fill: var(--emerald); }
+.sig.ok path { stroke: var(--emerald); animation: sig 2s ease-in-out infinite; }
+.sig.ok .s2 { animation-delay: .25s; }
+.sig.ok .s3 { animation-delay: .5s; }
+.sig.wait .s0, .sig.wait .s1 { fill: var(--amber); stroke: var(--amber); opacity: 1; }
+.sig.bad .s0 { fill: var(--rose); animation: blink 1s infinite; }
+.sig.flash { box-shadow: 0 0 0 2px rgba(52, 211, 153, .6), 0 0 20px rgba(52, 211, 153, .4); }
+.mq-list { list-style: none; margin: 0; padding: 0; flex: 1; min-width: 0; display: grid; gap: 6px; }
+.mq-list li { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; }
+.mq-list span { color: var(--dim); }
+.mq-list b { color: #e2e8f0; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* =========================================================
+   GRAFIK & DATA
+   ========================================================= */
+.seg { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 12px; scrollbar-width: none; }
+.seg button { flex: 0 0 auto; border: 1px solid var(--line2); background: rgba(15, 23, 42, .7); color: var(--muted); padding: 7px 12px; border-radius: 10px; font-size: 12px; font-weight: 700; cursor: pointer; }
+.seg button.is-active { color: #1c1206; background: linear-gradient(90deg, var(--amber), var(--orange)); border-color: transparent; }
+.chart-box { position: relative; height: 300px; }
+@media (min-width: 1100px) { .chart-box { height: 360px; } }
+.chart-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 20px; font-size: 13px; color: var(--muted); background: rgba(12, 19, 36, .85); border-radius: 12px; border: 1px dashed var(--line2); }
+.sesi-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 6px; }
+.sesi { padding: 9px 10px; border-radius: 12px; border: 1px solid var(--line); background: rgba(15, 23, 42, .6); font-size: 11px; color: var(--muted); }
+.sesi b { display: block; font-size: 13px; color: #fff; }
+.sesi.done { border-color: rgba(52, 211, 153, .4); }
+.sesi.done em { color: #6ee7b7; }
+.sesi.now { border-color: rgba(245, 158, 11, .5); }
+.sesi.now em { color: #fcd34d; }
+.sesi em { font-style: normal; font-weight: 700; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid var(--line); }
+table { width: 100%; border-collapse: collapse; font-size: 12px; white-space: nowrap; }
+th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--line); }
+th { position: sticky; top: 0; background: rgba(15, 23, 42, .95); color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .05em; }
+td { color: #cbd5e1; font-family: 'JetBrains Mono', ui-monospace, monospace; }
+tbody tr:last-child td { border-bottom: 0; }
+td.empty { text-align: center; color: var(--dim); font-family: inherit; padding: 18px; }
+
+/* =========================================================
+   PERANGKAT
+   ========================================================= */
+.dev-grid { display: grid; gap: 14px; }
+@media (min-width: 900px) { .dev-grid { grid-template-columns: 1fr 1fr; } }
+.dev-card .dev-place { margin: -6px 0 12px; font-size: 12px; color: var(--muted); }
+.dev-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.dev-badge { width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; font-weight: 800; font-size: 18px; color: #fff; }
+.dev-badge.cyan { background: linear-gradient(135deg, rgba(34, 211, 238, .35), rgba(34, 211, 238, .1)); border: 1px solid rgba(34, 211, 238, .5); }
+.dev-badge.emerald { background: linear-gradient(135deg, rgba(52, 211, 153, .35), rgba(52, 211, 153, .1)); border: 1px solid rgba(52, 211, 153, .5); }
+.dev-head h3 { margin: 0; font-size: 16px; }
+.dev-head p { margin: 2px 0 0; font-size: 12px; color: var(--muted); }
+.dev-head .tag { margin-left: auto; }
+.dev-items { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.dev-item { display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: 14px; background: rgba(15, 23, 42, .6); border: 1px solid var(--line); }
+.dev-ic { flex: 0 0 36px; height: 36px; border-radius: 11px; display: grid; place-items: center; color: var(--c); background: color-mix(in srgb, var(--c) 14%, transparent); border: 1px solid color-mix(in srgb, var(--c) 40%, transparent); }
+.dev-ic svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.dev-tx { flex: 1; min-width: 0; }
+.dev-tx b { display: block; font-size: 13px; }
+.dev-tx p { margin: 2px 0 0; font-size: 11px; color: var(--muted); }
+.dev-val { font-size: 14px; font-weight: 700; color: #fff; text-align: right; white-space: nowrap; }
+.dev-foot { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 12px; font-size: 11px; color: var(--dim); }
+.dev-foot code, .topic-list code { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 11px; color: #fcd34d; background: rgba(120, 53, 15, .3); padding: 2px 6px; border-radius: 6px; }
+.dev-extra { margin-top: 10px; font-size: 11px; color: var(--muted); }
+.topic-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.topic-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; font-size: 12px; color: var(--muted); }
+.topic-list code { min-width: 170px; }
+.serial { display: grid; gap: 8px; font-size: 11px; }
+.serial div { display: flex; gap: 10px; }
+.serial span:first-child { flex: 0 0 56px; font-weight: 700; }
+.serial span:last-child { color: var(--muted); word-break: break-all; }
+.c-cyan { color: var(--cyan); }
+.c-emerald { color: var(--emerald); }
+
+/* =========================================================
+   NAVIGASI BAWAH (HP)
+   ========================================================= */
+.bottomnav {
+  position: fixed; left: 50%; bottom: calc(12px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 50;
+  display: flex; gap: 4px; padding: 6px; border-radius: 20px; isolation: isolate;
+  background: rgba(10, 16, 32, .9); border: 1px solid var(--line2);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); box-shadow: 0 10px 30px rgba(0, 0, 0, .45);
+}
+.bn { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; width: 96px; padding: 7px 0; border: 0; border-radius: 14px; background: transparent; color: var(--dim); font-size: 10px; font-weight: 700; cursor: pointer; transition: color .3s; white-space: nowrap; }
+.bn:hover { color: #cbd5e1; }
+.bn-glider { position: absolute; z-index: 0; top: 6px; bottom: 6px; left: 6px; border-radius: 14px; background: rgba(245, 158, 11, .16); border: 1px solid rgba(245, 158, 11, .35); transition: transform .45s cubic-bezier(.22, .8, .25, 1), width .3s; }
+.slide-dots { position: fixed; left: 50%; bottom: calc(80px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 49; display: flex; gap: 6px; pointer-events: none; }
+.slide-dots i { width: 6px; height: 6px; border-radius: 99px; background: rgba(148, 163, 184, .35); transition: width .3s, background .3s; }
+.slide-dots i.is-active { width: 18px; background: var(--amber); }
+@media (min-width: 1100px) { .slide-dots { bottom: calc(90px + env(safe-area-inset-bottom)); } }
+.bn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.bn.is-active { color: #fcd34d; }
+
+/* =========================================================
+   MODAL / PERINGATAN / TOAST
+   ========================================================= */
+.overlay { position: fixed; inset: 0; z-index: 100; display: none; align-items: center; justify-content: center; padding: 20px; background: rgba(0, 0, 0, .75); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+.overlay.is-open { display: flex; animation: fade .3s ease-out; }
+.modal { width: 100%; max-width: 380px; padding: 24px; border-radius: 26px; text-align: center; background: #0d1426; border: 1px solid; animation: pop .5s cubic-bezier(.2, .9, .3, 1.2) both; }
+.modal.amber { border-color: rgba(245, 158, 11, .5); --mc: 245, 158, 11; animation: pop .5s cubic-bezier(.2, .9, .3, 1.2) both, glow 2s ease-in-out .5s infinite; }
+.modal.rose { border-color: rgba(244, 63, 94, .5); --mc: 244, 63, 94; animation: pop .5s cubic-bezier(.2, .9, .3, 1.2) both, glow 1.6s ease-in-out .5s infinite; }
+.modal.calm { animation: pop .4s cubic-bezier(.2, .9, .3, 1.2) both; text-align: left; }
+.m-icon { position: relative; width: 80px; height: 80px; margin: 0 auto 16px; }
+.ring-a { position: absolute; inset: 0; border-radius: 50%; background: rgba(var(--mc), .4); animation: ringA 1.8s ease-out infinite; }
+.ring-a.d2 { animation-delay: .9s; }
+.m-ic { position: relative; width: 80px; height: 80px; border-radius: 50%; display: grid; place-items: center; background: rgba(var(--mc), .15); border: 1px solid rgba(var(--mc), .6); color: rgb(var(--mc)); }
+.m-ic svg { width: 40px; height: 40px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.m-ic.shake { animation: shake 1.6s ease-in-out .6s infinite; }
+.m-ic.drop svg { animation: drop 1.4s ease-in-out infinite; }
+.m-kicker { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: .15em; color: rgb(var(--mc)); }
+.modal h2 { margin: 4px 0 0; font-size: 20px; font-weight: 800; color: #fff; }
+.m-desc { margin: 10px 0 0; font-size: 14px; line-height: 1.6; color: #cbd5e1; }
+.m-now { margin: 10px 0 0; font-size: 12px; color: var(--muted); }
+.m-now b { color: #fda4af; }
+.m-btn { margin-top: 20px; width: 100%; padding: 11px; border: 0; border-radius: 14px; font-weight: 800; font-size: 14px; color: #1c1206; cursor: pointer; background: linear-gradient(90deg, rgb(var(--mc)), var(--orange)); }
+.m-btn:active { transform: scale(.97); }
+.m-row { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+
+.toast { position: fixed; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom)); z-index: 120; transform: translate(-50%, 20px); opacity: 0; pointer-events: none; padding: 10px 16px; border-radius: 12px; background: rgba(15, 23, 42, .95); border: 1px solid var(--line2); font-size: 13px; font-weight: 600; box-shadow: 0 10px 30px rgba(0, 0, 0, .45); transition: opacity .25s, transform .25s; max-width: 90vw; text-align: center; }
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+@media (min-width: 1100px) { .toast { bottom: 110px; } }
+
+/* =========================================================
+   ANIMASI
+   ========================================================= */
+@keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ping { 0% { box-shadow: 0 0 0 0 rgba(52, 211, 153, .7); } 100% { box-shadow: 0 0 0 8px rgba(52, 211, 153, 0); } }
+@keyframes blink { 50% { opacity: .3; } }
+@keyframes sway { 0%, 100% { transform: translateX(-50%) rotate(-2deg); } 50% { transform: translateX(-50%) rotate(2deg); } }
+@keyframes flicker { 0%, 100% { opacity: 1; } 48% { opacity: .88; } 50% { opacity: .96; } }
+@keyframes wave { to { transform: translateX(-50%); } }
+@keyframes rise { 0% { transform: translateY(0) translateX(0); opacity: 0; } 10% { opacity: 1; } 50% { transform: translateY(-110px) translateX(4px); } 100% { transform: translateY(-240px) translateX(-3px); opacity: 0; } }
+@keyframes drift { 0%, 100% { transform: translate(0, 0) rotate(0); } 50% { transform: translate(6px, 8px) rotate(45deg); } }
+@keyframes slide { 0%, 60% { transform: translateY(0); opacity: .9; } 100% { transform: translateY(26px); opacity: 0; } }
+@keyframes bob { 0%, 100% { transform: rotate(var(--r, 0deg)) translateY(0); } 50% { transform: rotate(var(--r, 0deg)) translateY(-3px); } }
+@keyframes lowPulse { 0%, 100% { box-shadow: 0 0 0 rgba(244, 63, 94, 0), 0 18px 40px rgba(0, 0, 0, .35); } 50% { box-shadow: 0 0 30px rgba(244, 63, 94, .45), 0 18px 40px rgba(0, 0, 0, .35); } }
+@keyframes rays { 0%, 100% { opacity: .5; } 50% { opacity: 1; } }
+@keyframes halo { 0%, 100% { transform: scale(.92); } 50% { transform: scale(1.06); } }
+@keyframes heat { 0% { transform: translateY(0) scaleX(1); opacity: 0; } 30% { opacity: 1; } 100% { transform: translateY(-120px) scaleX(-1); opacity: 0; } }
+@keyframes fall { 0% { transform: translateY(0) rotate(0); opacity: 0; } 10% { opacity: 1; } 100% { transform: translateY(100px) rotate(180deg); opacity: 0; } }
+@keyframes mist { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(40%); } }
+@keyframes rain { from { transform: translateY(0); } to { transform: translateY(90px); } }
+@keyframes pipPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, .6); } 50% { box-shadow: 0 0 0 6px rgba(245, 158, 11, 0); } }
+@keyframes sig { 0%, 100% { opacity: .3; } 40% { opacity: 1; } }
+@keyframes pop { 0% { opacity: 0; transform: scale(.6) translateY(24px); } 70% { transform: scale(1.04); } 100% { opacity: 1; transform: scale(1); } }
+@keyframes glow { 0%, 100% { box-shadow: 0 0 24px rgba(var(--mc), .25); } 50% { box-shadow: 0 0 52px rgba(var(--mc), .6); } }
+@keyframes ringA { 0% { transform: scale(.8); opacity: .7; } 100% { transform: scale(2.4); opacity: 0; } }
+@keyframes shake { 0%, 100% { transform: rotate(0); } 20% { transform: rotate(-12deg); } 40% { transform: rotate(12deg); } 60% { transform: rotate(-7deg); } 80% { transform: rotate(7deg); } }
+@keyframes drop { 0%, 100% { transform: translateY(-3px); } 50% { transform: translateY(4px); } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
+}
+
+/* Menu bawah versi desktop: lebih lebar, ikon & teks sejajar */
+@media (min-width: 1100px) {
+  .bottomnav { padding: 7px; }
+  .bn { width: 160px; flex-direction: row; justify-content: center; gap: 8px; font-size: 13px; padding: 11px 0; }
+  .bn svg { width: 18px; height: 18px; }
+  .bn-glider { top: 7px; bottom: 7px; }
+}
+
+/* =========================================================
+   SENSOR KETINGGIAN AIR DI DALAM KOTAK (penggaris + pelampung)
+   ========================================================= */
+.ruler { position: absolute; left: 6px; top: 14px; bottom: 0; width: 22px; z-index: 5; border-left: 2px solid rgba(226, 232, 240, .35); }
+.ruler i { position: absolute; left: 0; height: 1px; width: 6px; background: rgba(226, 232, 240, .45); }
+.ruler i.major { width: 11px; background: rgba(226, 232, 240, .75); }
+.ruler i b { position: absolute; left: 13px; top: -6px; font: 700 8px 'JetBrains Mono', monospace; color: rgba(226, 232, 240, .7); }
+.ruler i.low { width: 22px; height: 0; border-top: 1px dashed rgba(251, 113, 133, .9); background: none; }
+.ruler i.low b { color: #fda4af; left: 2px; top: -11px; }
+.float-rod { position: absolute; left: 36px; top: 0; bottom: 6px; width: 2px; z-index: 4; background: linear-gradient(180deg, rgba(148, 163, 184, .7), rgba(148, 163, 184, .3)); }
+.float { position: absolute; left: 29px; bottom: calc(var(--lvl) - 9px); z-index: 5; width: 16px; height: 18px; transition: bottom 1.4s cubic-bezier(.4, 0, .2, 1); }
+.float span { display: block; width: 100%; height: 100%; border-radius: 50%; background: linear-gradient(180deg, #fb7185 0 50%, #f8fafc 50% 100%); box-shadow: 0 0 0 2px rgba(15, 23, 42, .6), 0 0 10px rgba(251, 113, 133, .5); animation: floatBob 2.4s ease-in-out infinite; }
+.tank.low .float span { box-shadow: 0 0 0 2px rgba(15, 23, 42, .6), 0 0 16px rgba(251, 113, 133, .95); }
+
+/* =========================================================
+   SENSOR TDS DI DALAM KOTAK (probe + layar)
+   ========================================================= */
+.milk { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255, 255, 255, .22), rgba(253, 242, 248, .10)); opacity: var(--milk, 0); transition: opacity 1.2s; }
+.tds-probe { position: absolute; right: 54px; top: 0; height: 70%; width: 14px; z-index: 5; display: flex; flex-direction: column; align-items: center; }
+.tds-cable { width: 3px; flex: 0 0 34%; background: #0f172a; border: 1px solid rgba(148, 163, 184, .4); border-top: 0; border-bottom: 0; }
+.tds-body { width: 12px; flex: 1; border-radius: 4px 4px 2px 2px; background: linear-gradient(90deg, #0f172a, #334155 50%, #0f172a); border: 1px solid rgba(148, 163, 184, .5); position: relative; }
+.tds-body::after { content: ''; position: absolute; left: 1px; right: 1px; top: 30%; height: 4px; background: var(--pink); opacity: .8; border-radius: 1px; }
+.tds-tip { position: relative; width: 12px; height: 14px; display: flex; justify-content: space-between; padding: 0 2px; }
+.tds-tip i { width: 2px; height: 100%; background: linear-gradient(180deg, #e2e8f0, #94a3b8); border-radius: 0 0 2px 2px; }
+.tds-tip .pulse { position: absolute; left: 50%; bottom: -4px; width: 26px; height: 26px; margin-left: -13px; border-radius: 50%; border: 1.5px solid rgba(244, 114, 182, .9); opacity: 0; animation: tdsPulse 2s ease-out infinite; }
+.tds-tip .pulse.d2 { animation-delay: 1s; }
+.tds-probe.dry .pulse { animation: none; }
+.tds-chip { position: absolute; right: 60px; top: 40px; z-index: 7; display: grid; grid-template-columns: auto auto auto; align-items: baseline; gap: 2px 5px; padding: 4px 8px 5px; border-radius: 8px; background: rgba(2, 6, 23, .8); border: 1px solid rgba(244, 114, 182, .45); font-size: 10px; color: var(--muted); }
+.tds-chip > span { font-size: 9px; font-weight: 700; color: #f9a8d4; }
+.tds-chip b { font-size: 12px; color: #fff; }
+.tds-chip small { font-size: 9px; }
+.tds-chip.dry { border-color: rgba(245, 158, 11, .6); }
+.tds-seg { grid-column: 1 / -1; display: flex; gap: 2px; }
+.tds-seg i { flex: 1; height: 4px; border-radius: 2px; background: rgba(51, 65, 85, .9); transition: background .5s; }
+.tds-seg i.on { background: var(--pink); box-shadow: 0 0 6px rgba(244, 114, 182, .7); }
+.tds-seg i.on.lo { background: var(--blue); box-shadow: 0 0 6px rgba(96, 165, 250, .7); }
+
+/* =========================================================
+   KARTU TDS (meter jarum + gelas)
+   ========================================================= */
+.tds-main { display: flex; align-items: center; gap: 14px; }
+.beaker { position: relative; flex: 0 0 70px; height: 96px; border: 2px solid rgba(186, 230, 253, .35); border-top: 0; border-radius: 0 0 14px 14px; overflow: hidden; }
+.beaker-water { position: absolute; left: 0; right: 0; bottom: 0; height: 68%; background: linear-gradient(180deg, rgba(56, 189, 248, .45), rgba(14, 116, 144, .7)); }
+.beaker-water::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 2px; background: rgba(186, 230, 253, .7); }
+.beaker-milk { position: absolute; inset: 0; background: rgba(253, 242, 248, .45); opacity: 0; transition: opacity 1.2s; }
+.beaker-probe { position: absolute; right: 12px; top: 0; height: 80%; width: 6px; background: #1e293b; border: 1px solid rgba(148, 163, 184, .5); border-radius: 0 0 2px 2px; z-index: 2; }
+.beaker-probe i { position: absolute; left: 50%; bottom: -5px; width: 14px; height: 14px; margin-left: -7px; border-radius: 50%; border: 1px solid rgba(244, 114, 182, .9); animation: tdsPulse 2s ease-out infinite; }
+.beaker .crystal { z-index: 3; animation-name: dissolve; }
+.gauge { position: relative; flex: 1; min-width: 0; max-width: 220px; padding-bottom: 30px; }
+.gauge svg { width: 100%; height: auto; overflow: visible; }
+.g-bg, .g-fg { fill: none; stroke-width: 10; stroke-linecap: round; }
+.g-bg { stroke: rgba(51, 65, 85, .8); }
+.g-fg { stroke: url(#tdsg); stroke-dasharray: 157.1; stroke-dashoffset: 157.1; transition: stroke-dashoffset 1.2s cubic-bezier(.4, 0, .2, 1); filter: drop-shadow(0 0 4px rgba(244, 114, 182, .5)); }
+.g-needle { transform-origin: 60px 62px; transform: rotate(-90deg); transition: transform 1.2s cubic-bezier(.34, 1.4, .5, 1); }
+.g-needle line { stroke: #fff; stroke-width: 3; stroke-linecap: round; }
+.g-needle circle { fill: #fff; stroke: var(--pink); stroke-width: 2; }
+.g-val { position: absolute; left: 0; right: 0; bottom: 0; text-align: center; line-height: 1; }
+.g-val b { font-size: 24px; font-weight: 800; color: #fff; }
+.g-val span { margin-left: 4px; font-size: 11px; font-weight: 700; color: var(--muted); }
+.tds-zones { display: flex; justify-content: space-between; gap: 6px; margin-top: 12px; font-size: 9px; }
+.tds-zones span { flex: 1; text-align: center; padding: 3px 0; border-radius: 6px; background: rgba(30, 41, 59, .6); color: var(--dim); border: 1px solid transparent; }
+.tds-zones span.is-on { color: #fff; border-color: rgba(244, 114, 182, .5); background: rgba(131, 24, 67, .35); }
+
+@keyframes floatBob { 0%, 100% { transform: translateY(0) rotate(-4deg); } 50% { transform: translateY(-3px) rotate(4deg); } }
+@keyframes tdsPulse { 0% { transform: scale(.3); opacity: .9; } 100% { transform: scale(1.4); opacity: 0; } }
+@keyframes dissolve { 0% { transform: translateY(0) rotate(0); opacity: 0; } 10% { opacity: 1; } 70% { opacity: .8; } 100% { transform: translateY(80px) rotate(160deg) scale(.2); opacity: 0; } }
+
+</style>
+<style>html,body{background:#060a14;color:#e2e8f0;color-scheme:dark}</style>
 
 <!-- MQTT client + library grafik -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
@@ -64,11 +701,27 @@
             <span><b id="tank-hum">—</b> RH dalam</span>
           </div>
 
+          <!-- Sensor ketinggian air: penggaris + pelampung -->
+          <div class="ruler" id="ruler" aria-hidden="true"></div>
+          <div class="float-rod" aria-hidden="true"></div>
+          <div class="float" id="float" aria-hidden="true"><span></span></div>
+
+          <!-- Sensor TDS: probe celup + layar -->
+          <div class="tds-probe" id="tds-probe" aria-hidden="true">
+            <div class="tds-cable"></div><div class="tds-body"></div>
+            <div class="tds-tip"><i></i><i></i><span class="pulse"></span><span class="pulse d2"></span></div>
+          </div>
+          <div class="tds-chip" id="tds-chip">
+            <span class="mono">TDS</span><b class="mono" id="tank-tds">—</b><small id="tank-tds-unit">ppm</small>
+            <div class="tds-seg" id="tds-seg"><i></i><i></i><i></i><i></i><i></i></div>
+          </div>
+
           <div class="eggs" id="eggs"></div>
 
           <div class="water">
             <div class="wave a"><svg viewBox="0 0 1200 16" preserveAspectRatio="none"><path d="M0 8 Q75 0 150 8 T300 8 T450 8 T600 8 T750 8 T900 8 T1050 8 T1200 8 V16 H0Z"/></svg></div>
             <div class="wave b"><svg viewBox="0 0 1200 16" preserveAspectRatio="none"><path d="M0 8 Q75 0 150 8 T300 8 T450 8 T600 8 T750 8 T900 8 T1050 8 T1200 8 V16 H0Z"/></svg></div>
+            <div class="milk" id="milk"></div>
             <div class="water-in"><div id="salt"></div><div id="bubbles"></div></div>
           </div>
 
@@ -84,7 +737,7 @@
       </div>
 
       <div class="scene-stats">
-        <div class="stat"><span>Kepekatan garam</span><b id="st-garam">—</b></div>
+        <div class="stat"><span>Garam (TDS)</span><b id="st-garam">—</b></div>
         <div class="stat"><span>Suhu air</span><b id="st-suhu">—</b></div>
         <div class="stat"><span>Ketinggian air</span><b id="st-level">—</b></div>
         <div class="stat"><span>Lampu</span><b id="st-lampu">—</b></div>
@@ -169,21 +822,34 @@
       <p class="sub mono" id="temp-key">menunggu data</p>
     </article>
 
-    <!-- Kepekatan garam -->
-    <article class="card">
+    <!-- Kepekatan garam (sensor TDS) -->
+    <article class="card tds-card">
       <div class="card-h">
-        <div class="card-t"><span class="dot pink"></span>Kepekatan Garam</div>
+        <div class="card-t"><span class="dot pink"></span>Kepekatan Garam · TDS</div>
         <span class="tag idle" id="garam-tag">Menunggu</span>
       </div>
-      <div class="garam-body">
-        <div class="shaker" id="shaker" aria-hidden="true"></div>
-        <div class="garam-info">
-          <div><span class="big" id="garam-val">—</span><span class="unit" id="garam-unit"></span></div>
-          <div class="bar"><div class="bar-fill pink" id="garam-bar"></div></div>
-          <p class="sub" id="garam-note">Skala indikator</p>
-          <p class="sub mono" id="garam-key">menunggu data</p>
+      <div class="tds-main">
+        <div class="beaker" id="shaker" aria-hidden="true">
+          <div class="beaker-water"><div class="beaker-milk" id="beaker-milk"></div></div>
+          <div class="beaker-probe"><i></i></div>
+        </div>
+        <div class="gauge">
+          <svg viewBox="0 0 120 72" aria-hidden="true">
+            <defs>
+              <linearGradient id="tdsg" x1="0" x2="1" y1="0" y2="0">
+                <stop offset="0" stop-color="#60a5fa"/><stop offset=".5" stop-color="#f9a8d4"/><stop offset="1" stop-color="#f472b6"/>
+              </linearGradient>
+            </defs>
+            <path class="g-bg" d="M10 62 A50 50 0 0 1 110 62"/>
+            <path class="g-fg" id="tds-arc" d="M10 62 A50 50 0 0 1 110 62"/>
+            <g id="tds-needle" class="g-needle"><line x1="60" y1="62" x2="60" y2="22"/><circle cx="60" cy="62" r="5"/></g>
+          </svg>
+          <div class="g-val"><b id="garam-val">—</b><span id="garam-unit">ppm</span></div>
         </div>
       </div>
+      <div class="tds-zones mono" id="tds-zones"></div>
+      <p class="sub" id="garam-note">Skala indikator</p>
+      <p class="sub mono" id="garam-key">menunggu data</p>
     </article>
 
     <!-- Kelembaban dalam & luar kotak -->
@@ -402,6 +1068,891 @@
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="app.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  /* =====================================================================
+     KONFIGURASI
+     ===================================================================== */
+  var CFG = {
+    host: 'v28c2407.ala.asia-southeast1.emqxsl.com', port: 8084,   // WebSocket TLS
+    user: 'Telur-asin', pass: 'TELURASIN12345',
+    sub: 'telur/slave/+',               // data slave 1, 2, led, time, status, siklus
+    cmd: 'telur/control/heater',        // perintah ON / OFF ke ESP32
+    cycleDays: 7,                       // lama siklus (hari), bisa diubah dengan mengetuk "Lama siklus"
+    alertDay: 7,                        // hari munculnya peringatan (sama seperti program sebelumnya)
+    levelLow: 20,                       // peringatan air rendah jika di bawah angka ini (%)
+    levelReset: 25,                     // peringatan bisa muncul lagi setelah level naik di atas angka ini (%)
+    // Sensor TDS (kepekatan garam). Sesuaikan dengan rentang sensor & hasil kalibrasi larutanmu.
+    tds: { max: 1000, rendah: 300, pekat: 700, unit: 'ppm' },   // max = ujung skala, rendah/pekat = batas zona
+    staleSec: 120,                      // slave dianggap "Terlambat" jika tidak ada data selama ini (detik)
+    // 3 sesi penyimpanan data per hari. Data pertama yang masuk di tiap sesi akan disimpan.
+    sesi: [{ name: 'Pagi', from: 6 }, { name: 'Siang', from: 12 }, { name: 'Malam', from: 18 }],
+    suhu: { dingin: 20, hangat: 32, panas: 40 },    // batas status suhu air (°C)
+    lembab: { kering: 40, basah: 80 }               // batas status kelembaban (%)
+  };
+
+  /* Pencocokan nama data dari ESP32 ke indikator (lewat kata kunci).
+     - Kata "dalam / in / kotak / box"  -> kelembaban DALAM kotak
+     - Kata "luar / out / ruang / room" -> kelembaban LUAR kotak
+     - Tanpa keterangan: kelembaban dari Slave 1 = dalam kotak, dari Slave 2 = luar kotak
+     - "suhu" dari Slave 1 = suhu air, dari Slave 2 = suhu ruang
+     Kalau slave hanya mengirim angka tanpa nama, dipakai urutan ORDER. */
+  var RE = {
+    hum: /lembab|hum|\brh/i, temp: /suhu|temp/i, garam: /garam|salin|salt|tds|kadar/i,
+    level: /tinggi|level|jarak|volume|water/i, lampu: /heater|pemanas|relay|lampu|led/i,
+    dalam: /dalam|inside|kotak|box|in$|_in\b|\bin\b/i, luar: /luar|outside|ruang|room|out$|_out\b|\bout\b/i,
+    airW: /air|water|brine|larutan/i, udara: /ruang|room|udara|ambient|luar|env/i
+  };
+  var SPECIFIC = [
+    ['humIn', function (k) { return RE.hum.test(k) && RE.dalam.test(k); }],
+    ['humOut', function (k) { return RE.hum.test(k) && RE.luar.test(k); }],
+    ['suhuAir', function (k) { return RE.temp.test(k) && RE.airW.test(k); }],
+    ['suhuRuang', function (k) { return RE.temp.test(k) && RE.udara.test(k); }]
+  ];
+  var GENERIC = {
+    1: [['garam', RE.garam], ['level', RE.level], ['suhuAir', RE.temp], ['humIn', RE.hum], ['humOut', RE.hum], ['heater', RE.lampu]],
+    2: [['garam', RE.garam], ['level', RE.level], ['suhuRuang', RE.temp], ['humOut', RE.hum], ['humIn', RE.hum], ['heater', RE.lampu], ['suhuAir', RE.temp]]
+  };
+  var ORDER = { 1: ['garam', 'suhuAir', 'level', 'humIn'], 2: ['suhuRuang', 'humOut', 'heater', 'humIn'] };
+
+  var META = {
+    garam:     { label: 'Kepekatan Garam (TDS)',  unit: 'ppm', color: '#f472b6', icon: 'salt' },
+    suhuAir:   { label: 'Suhu Air',               unit: '°C', color: '#f59e0b', icon: 'temp' },
+    level:     { label: 'Ketinggian Air',         unit: '%',  color: '#60a5fa', icon: 'wave' },
+    humIn:     { label: 'Kelembaban Dalam Kotak', unit: '%',  color: '#22d3ee', icon: 'drop' },
+    humOut:    { label: 'Kelembaban Luar Kotak',  unit: '%',  color: '#a78bfa', icon: 'cloud' },
+    suhuRuang: { label: 'Suhu Ruang',             unit: '°C', color: '#34d399', icon: 'temp' },
+    heater:    { label: 'Lampu',                  unit: '',   color: '#fbbf24', icon: 'bulb' }
+  };
+  var FIELDS = ['garam', 'suhuAir', 'level', 'humIn', 'humOut', 'suhuRuang'];
+
+  /* Isi halaman "Perangkat". Ubah teks di sini sesuai alat yang dipakai. */
+  var DEVICES = [
+    { n: 1, color: 'cyan', name: 'Slave 1', role: 'Unit Kotak Pengasinan',
+      place: 'Dipasang di dalam / pada kotak rendaman telur. Membaca kondisi larutan garam.',
+      items: [
+        { id: 'garam', alat: 'Sensor TDS (kepekatan garam)', fungsi: 'Probe dicelup ke larutan, mengukur zat terlarut (garam) dalam ppm.' },
+        { id: 'suhuAir', alat: 'Sensor suhu air (probe tahan air)', fungsi: 'Mengukur suhu larutan garam di dalam kotak.' },
+        { id: 'level', alat: 'Sensor ketinggian air (water level)', fungsi: 'Memantau tinggi larutan agar telur tetap terendam.' },
+        { id: 'humIn', alat: 'Sensor kelembaban dalam kotak', fungsi: 'Mengukur kelembaban udara di dalam kotak.' }
+      ] },
+    { n: 2, color: 'emerald', name: 'Slave 2', role: 'Unit Lingkungan & Lampu',
+      place: 'Dipasang di luar kotak. Membaca kondisi ruangan dan mengendalikan lampu.',
+      items: [
+        { id: 'suhuRuang', alat: 'Sensor suhu ruang', fungsi: 'Mengukur suhu udara di sekitar kotak.' },
+        { id: 'humOut', alat: 'Sensor kelembaban luar kotak', fungsi: 'Mengukur kelembaban udara ruangan.' },
+        { id: 'heater', alat: 'Lampu (relay)', fungsi: 'Dinyalakan / dimatikan dari dashboard lewat topik telur/control/heater.' }
+      ] }
+  ];
+
+  var GROUPS = [
+    { id: 'suhu', label: 'Suhu', fields: ['suhuAir', 'suhuRuang'], unit: '°C' },
+    { id: 'lembab', label: 'Kelembaban', fields: ['humIn', 'humOut'], unit: '%', min: 0, max: 100 },
+    { id: 'level', label: 'Ketinggian Air', fields: ['level'], unit: '%', min: 0, max: 100 },
+    { id: 'garam', label: 'Kepekatan Garam (TDS)', fields: ['garam'], unit: 'ppm' }
+  ];
+
+  var ICON = {
+    salt: '<svg viewBox="0 0 24 24"><path d="M8 3h8l1 5H7zM7 8h10l-1 13H8z"/><path d="M10 12h.01M14 12h.01M12 15h.01"/></svg>',
+    temp: '<svg viewBox="0 0 24 24"><path d="M14 14.8V3.5a2.5 2.5 0 0 0-5 0v11.3a4.5 4.5 0 1 0 5 0z"/></svg>',
+    wave: '<svg viewBox="0 0 24 24"><path d="M2 12c2-2 4-2 6 0s4 2 6 0 4-2 6 0M2 17c2-2 4-2 6 0s4 2 6 0 4-2 6 0M12 3v5"/></svg>',
+    drop: '<svg viewBox="0 0 24 24"><path d="M12 2.7l5.7 5.7a8 8 0 1 1-11.4 0z"/></svg>',
+    cloud: '<svg viewBox="0 0 24 24"><path d="M17.5 19a4.5 4.5 0 1 0-1.4-8.8A6 6 0 1 0 6 16.5"/><path d="M8 19v2M12 18v3M16 20v1"/></svg>',
+    bulb: '<svg viewBox="0 0 24 24"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.1V17h6v-.2c0-.8.4-1.6 1-2.1A7 7 0 0 0 12 2z"/></svg>'
+  };
+
+  /* =====================================================================
+     UTILITAS
+     ===================================================================== */
+  function $(id) { return document.getElementById(id); }
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function hhmmss(d) { d = d || new Date(); return pad(d.getHours()) + '.' + pad(d.getMinutes()) + '.' + pad(d.getSeconds()); }
+  function hhmm(d) { return pad(d.getHours()) + '.' + pad(d.getMinutes()); }
+  function ymd(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function load(k, def) { try { var v = localStorage.getItem(k); return v === null ? def : JSON.parse(v); } catch (e) { return def; } }
+  function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  function fmtNum(n, d) { return n === null || n === undefined || isNaN(n) ? '' : (Math.round(n * Math.pow(10, d || 1)) / Math.pow(10, d || 1)); }
+  function ago(t) {
+    var s = Math.round((Date.now() - t) / 1000);
+    if (s < 5) return 'baru saja';
+    if (s < 60) return s + ' dtk lalu';
+    if (s < 3600) return Math.floor(s / 60) + ' mnt lalu';
+    return hhmm(new Date(t));
+  }
+  function tag(el, cls, text) { if (!el) return; el.className = 'tag ' + cls; el.textContent = text; }
+  var toastT;
+  function toast(msg) {
+    var el = $('toast'); el.textContent = msg; el.classList.add('show');
+    clearTimeout(toastT); toastT = setTimeout(function () { el.classList.remove('show'); }, 2600);
+  }
+
+  /* ============ PARSER TEKS ESP32 (sama seperti sebelumnya) ============ */
+  function parsePairs(raw) {
+    var out = []; raw = raw.trim();
+    if (raw.charAt(0) === '{') {
+      try { var o = JSON.parse(raw); Object.keys(o).forEach(function (k) { out.push([k, String(o[k])]); }); return out; } catch (e) {}
+    }
+    raw.split(/[,;|\n\r]+/).forEach(function (tok) {
+      tok = tok.trim(); if (!tok) return;
+      var multi = tok.match(/[A-Za-z_][\w.]*\s*(?:->|[:=])\s*-?\d/g);
+      if (multi && multi.length > 1) {
+        var re = /([A-Za-z_][\w.]*)\s*(?:->|[:=])\s*(-?\d+(?:[.,]\d+)?[^\s]*)/g, m;
+        while ((m = re.exec(tok))) out.push([m[1], m[2]]);
+        return;
+      }
+      var p = tok.match(/^(.+?)\s*(?:->|[:=])\s*(.+)$/);
+      if (p) out.push([p[1].trim(), p[2].trim()]); else out.push(['Data ' + (out.length + 1), tok]);
+    });
+    return out;
+  }
+  function splitVal(v) {
+    var m = v.match(/^(-?\d+(?:[.,]\d+)?)\s*(.*)$/);
+    return m ? { num: m[1], unit: m[2].replace(/^C$/i, '°C'), n: parseFloat(m[1].replace(',', '.')) } : { num: v, unit: '', n: NaN };
+  }
+  function isOn(t) { return /NYALA|^\s*(on|1|true|high)\s*$/i.test(t); }
+
+  /* =====================================================================
+     STATE
+     ===================================================================== */
+  var S = {
+    vals: {}, heater: null, heaterKey: '', pending: 0,
+    mqtt: false, connecting: true, esp: null, msgCount: 0, lastMsg: 0, lastTopic: '',
+    slave: { 1: { t: 0, ok: null, raw: '—', extra: {} }, 2: { t: 0, ok: null, raw: '—', extra: {} } },
+    espOffset: null, espDay: null, day: 1, totalDays: CFG.cycleDays
+  };
+  try { var sd = parseInt(localStorage.getItem('cycleDays'), 10); if (sd >= 1) S.totalDays = sd; } catch (e) {}
+  var client = null;
+
+  function num(id) { var v = S.vals[id]; return v && !isNaN(v.n) ? v.n : null; }
+  function txt(id) { var v = S.vals[id]; return v ? v.num + (v.unit ? ' ' + v.unit : '') : '—'; }
+  function levelPct() {
+    var L = S.vals.level; if (!L || isNaN(L.n)) return null;
+    return L.unit === '%' ? clamp(L.n, 0, 100) : null;
+  }
+  function estLevel() {   // estimasi tinggi air dari hari berjalan (dipakai sebelum ada data sensor)
+    var p = clamp((S.day - 1) / Math.max(S.totalDays, 1), 0, 1);
+    return Math.round(100 - p * 45);
+  }
+
+  /* =====================================================================
+     ELEMEN ANIMASI (dibuat sekali)
+     ===================================================================== */
+  function rnd(a, b) { return a + Math.random() * (b - a); }
+  function buildScene() {
+    var eggs = $('eggs'), rows = [['back', 4], ['front', 5]];
+    rows.forEach(function (r) {
+      var row = document.createElement('div'); row.className = 'egg-row ' + r[0];
+      for (var i = 0; i < r[1]; i++) {
+        var e = document.createElement('div'); e.className = 'egg';
+        e.style.setProperty('--r', rnd(-14, 14).toFixed(1) + 'deg');
+        e.style.setProperty('--dl', rnd(0, 3).toFixed(2) + 's');
+        e.style.setProperty('--bob', rnd(3.5, 5.5).toFixed(2) + 's');
+        row.appendChild(e);
+      }
+      eggs.appendChild(row);
+    });
+    var b = $('bubbles');
+    for (var i = 0; i < 16; i++) {
+      var s = document.createElement('span'), z = rnd(3, 8);
+      s.className = 'bubble';
+      s.style.cssText = 'left:' + rnd(4, 84) + '%;width:' + z + 'px;height:' + z + 'px;--f:' + rnd(.7, 1.4).toFixed(2) + ';--dl:' + rnd(0, 6).toFixed(2) + 's';
+      b.appendChild(s);
+    }
+    var salt = $('salt');
+    for (i = 0; i < 44; i++) {
+      var k = document.createElement('span'); k.className = 'speck';
+      k.style.cssText = 'left:' + rnd(2, 88) + '%;top:' + rnd(5, 95) + '%;--d:' + rnd(6, 12).toFixed(1) + 's;--dl:' + rnd(-8, 0).toFixed(1) + 's;opacity:' + rnd(.4, 1).toFixed(2);
+      salt.appendChild(k);
+    }
+    var drops = $('drops');
+    for (i = 0; i < 20; i++) {
+      var d = document.createElement('span'), dz = rnd(.7, 1.4);
+      d.className = 'droplet';
+      d.style.cssText = 'left:' + rnd(3, 92) + '%;top:' + rnd(4, 70) + '%;transform:scale(' + dz.toFixed(2) + ');--d:' + rnd(7, 13).toFixed(1) + 's;--dl:' + rnd(-10, 0).toFixed(1) + 's';
+      drops.appendChild(d);
+    }
+    var sh = $('shaker');
+    for (i = 0; i < 12; i++) {
+      var c = document.createElement('span'); c.className = 'crystal';
+      c.style.cssText = 'left:' + rnd(10, 60) + '%;--d:' + rnd(2.2, 3.4).toFixed(2) + 's;--dl:' + rnd(0, 3.4).toFixed(2) + 's';
+      sh.appendChild(c);
+    }
+    // penggaris sensor ketinggian air di dalam kotak
+    var ru = $('ruler'), h = '';
+    for (var v = 0; v <= 100; v += 10) h += '<i class="' + (v % 50 === 0 ? 'major' : '') + '" style="bottom:' + v + '%">' + (v % 50 === 0 ? '<b>' + v + '</b>' : '') + '</i>';
+    h += '<i class="low" style="bottom:' + CFG.levelLow + '%"><b>' + CFG.levelLow + '</b></i>';
+    ru.innerHTML = h;
+  }
+
+  /* =====================================================================
+     RENDER
+     ===================================================================== */
+  function tempColor(t) {
+    if (t === null) return '#64748b';
+    var h = 205 - clamp((t - 15) / 30, 0, 1) * 200;
+    return 'hsl(' + h.toFixed(0) + ',85%,55%)';
+  }
+  function tempStatus(t) {
+    if (t === null) return ['idle', 'Menunggu'];
+    if (t < CFG.suhu.dingin) return ['info', 'Dingin'];
+    if (t < CFG.suhu.hangat) return ['ok', 'Normal'];
+    if (t < CFG.suhu.panas) return ['warn', 'Hangat'];
+    return ['bad', 'Panas'];
+  }
+  function humStatus(h) {
+    if (h === null) return ['idle', 'Menunggu'];
+    if (h < CFG.lembab.kering) return ['warn', 'Kering'];
+    if (h <= CFG.lembab.basah) return ['ok', 'Normal'];
+    return ['info', 'Lembab'];
+  }
+  function levelStatus(p) {
+    if (p === null) return ['idle', 'Menunggu'];
+    if (p < CFG.levelLow) return ['bad', 'Rendah'];
+    if (p < 50) return ['warn', 'Waspada'];
+    return ['ok', 'Aman'];
+  }
+
+  function renderPill() {
+    var k, t, el = $('mqtt-pill');
+    if (!S.mqtt) { k = S.connecting ? 'wait' : 'bad'; t = S.connecting ? 'Menghubungkan...' : 'Broker Terputus'; }
+    else if (S.esp) { k = 'ok'; t = 'Terhubung'; }
+    else { k = 'wait'; t = S.esp === false ? 'ESP32 Offline' : 'Menunggu ESP32'; }
+    el.className = 'pill ' + k; $('mqtt-pill-text').textContent = t;
+  }
+
+  function renderTank() {
+    var scene = $('scene'), tank = $('tank');
+    var lp = levelPct(), est = lp === null, w = est ? estLevel() : lp;
+    scene.style.setProperty('--lvl', w + '%');
+    $('tank-level').textContent = Math.round(w) + '%';
+    $('tank-level-note').textContent = est ? 'estimasi hari' : 'sensor';
+    tank.classList.toggle('low', w < CFG.levelLow);
+
+    var t = num('suhuAir');
+    // air tetap biru; makin panas makin kuat semburat oranye
+    scene.style.setProperty('--wh', t === null ? 200 : (205 - clamp((t - 15) / 20, 0, 1) * 25).toFixed(0));
+    scene.style.setProperty('--warm', t === null ? 0 : clamp((t - 30) / 12, 0, .7).toFixed(2));
+    scene.style.setProperty('--bd', (t === null ? 5 : 6.5 - clamp((t - 20) / 20, 0, 1) * 4.5).toFixed(2) + 's');
+    var th = $('thermo');
+    th.style.setProperty('--t', (t === null ? 0 : clamp(t / 50, 0, 1) * 100) + '%');
+    th.style.setProperty('--tc', tempColor(t));
+    $('tank-temp').textContent = t === null ? '—°C' : fmtNum(t) + '°C';
+
+    var g = num('garam');
+    // garam: makin pekat makin banyak butiran & air makin keruh
+    var gp = tdsPct(g), nSpeck = Math.round((g === null ? .25 : Math.max(.08, gp)) * 44);
+    Array.prototype.forEach.call($('salt').children, function (el, i) { el.style.display = i < nSpeck ? '' : 'none'; });
+    scene.style.setProperty('--milk', g === null ? 0 : (gp * .9).toFixed(2));
+    var dry = w < 30;   // ujung probe TDS di 30% dari dasar
+    $('tds-probe').classList.toggle('dry', dry);
+    $('tds-chip').classList.toggle('dry', dry);
+    $('tank-tds').textContent = dry ? 'kering' : (S.vals.garam ? S.vals.garam.num : '—');
+    $('tank-tds-unit').textContent = dry ? '' : (S.vals.garam ? S.vals.garam.unit : CFG.tds.unit);
+    var segs = g === null ? 0 : Math.max(1, Math.ceil(gp * 5));
+    Array.prototype.forEach.call($('tds-seg').children, function (el, i) { el.className = i < segs ? 'on' + (g < CFG.tds.rendah ? ' lo' : '') : ''; });
+
+    var h = num('humIn');
+    $('drops').style.opacity = h === null ? .2 : clamp((h - 30) / 70, .05, 1).toFixed(2);
+    $('tank-hum').textContent = h === null ? '—' : Math.round(h) + '%';
+
+    // warna telur makin gelap seiring hari (proses pengasinan)
+    var p = clamp((S.day - 1) / Math.max(S.totalDays - 1, 1), 0, 1);
+    var c0 = [233, 243, 239], c1 = [176, 205, 192];
+    scene.style.setProperty('--egg', 'rgb(' + c0.map(function (v, i) { return Math.round(v + (c1[i] - v) * p); }).join(',') + ')');
+
+    scene.classList.toggle('on', S.heater === true);
+
+    $('st-garam').textContent = txt('garam');
+    $('st-suhu').textContent = txt('suhuAir');
+    $('st-level').textContent = S.vals.level ? txt('level') : '≈ ' + w + '%';
+    $('st-lampu').textContent = S.heater === null ? '—' : S.heater ? 'MENYALA' : 'MATI';
+  }
+
+  function renderLevel() {
+    var L = S.vals.level, p = levelPct(), st = levelStatus(p);
+    tag($('lvl-status'), st[0], st[1]);
+    var f = $('lvl-fill');
+    f.style.height = (p === null ? 0 : p) + '%';
+    f.className = 'lvl-fill' + (st[0] === 'bad' ? ' bad' : st[0] === 'warn' ? ' warn' : '');
+    $('lvl-low-line').style.bottom = CFG.levelLow + '%';
+    $('lvl-val').textContent = L ? L.num : '—';
+    $('lvl-unit').textContent = L ? L.unit : '';
+    $('lvl-key').textContent = L ? 'ESP32: ' + L.key : 'menunggu data';
+    var base = load('telur-level-base', null), d = $('lvl-delta');
+    if (p === null) { d.className = 'delta'; d.textContent = L ? 'Satuan bukan %, gauge tidak dihitung' : 'Menunggu data sensor'; }
+    else if (base === null) { d.className = 'delta'; d.textContent = 'Titik awal siklus dicatat'; }
+    else {
+      var diff = Math.round((base - p) * 10) / 10;
+      if (diff > 0) { d.className = 'delta down'; d.textContent = '▼ Turun ' + diff + '% sejak awal siklus'; }
+      else if (diff < 0) { d.className = 'delta up'; d.textContent = '▲ Naik ' + Math.abs(diff) + '% sejak awal siklus'; }
+      else { d.className = 'delta'; d.textContent = 'Belum berkurang'; }
+    }
+    $('lvl-base').textContent = 'Awal siklus: ' + (base === null ? '—' : base + '%') + ' · batas peringatan ' + CFG.levelLow + '%';
+  }
+
+  function renderLamp() {
+    var on = S.heater, card = $('lamp-card'), btn = $('lamp-btn');
+    var pending = S.pending && Date.now() - S.pending < 4000;
+    card.classList.toggle('on', on === true);
+    btn.classList.toggle('on', on === true);
+    btn.classList.toggle('pending', !!pending);
+    btn.setAttribute('aria-checked', on === true ? 'true' : 'false');
+    $('lamp-state').textContent = on === null ? '—' : on ? 'MENYALA' : 'MATI';
+    tag($('lamp-tag'), on === null ? 'idle' : on ? 'warn' : 'idle', on === null ? '—' : on ? 'ON' : 'OFF');
+    $('lamp-note').textContent = !S.mqtt ? 'Tidak terhubung ke broker'
+      : pending ? 'Mengirim perintah, menunggu ESP32...'
+      : on === null ? 'Belum ada data dari ESP32'
+      : 'Tekan tombol untuk ' + (on ? 'mematikan' : 'menyalakan');
+  }
+
+  function renderTemp() {
+    var t = num('suhuAir'), st = tempStatus(t), c = tempColor(t), card = $('temp-marker').closest('.card');
+    tag($('temp-tag'), st[0], st[1]);
+    $('temp-val').textContent = t === null ? '—' : fmtNum(t);
+    card.style.setProperty('--tc', c);
+    var m = $('temp-marker');
+    m.style.left = (t === null ? 0 : clamp((t - 10) / 40, 0, 1) * 100) + '%';
+    m.classList.toggle('has', t !== null);
+    $('mini-thermo-fill').style.height = (t === null ? 0 : clamp(t / 50, 0, 1) * 100) + '%';
+    card.style.setProperty('--heat', t === null ? 0 : clamp((t - 26) / 14, 0, 1).toFixed(2));
+    $('temp-key').textContent = S.vals.suhuAir ? 'ESP32: ' + S.vals.suhuAir.key : 'menunggu data';
+  }
+
+  function renderHum() {
+    [['humIn', 'in'], ['humOut', 'out']].forEach(function (x) {
+      var h = num(x[0]), st = humStatus(h);
+      $('hum-' + x[1] + '-val').textContent = h === null ? '—' : Math.round(h);
+      $('ring-' + x[1]).style.strokeDashoffset = (251.3 * (1 - (h === null ? 0 : clamp(h, 0, 100) / 100))).toFixed(1);
+      $('hum-' + x[1] + '-box').style.setProperty('--h', h === null ? .12 : clamp(h / 100, .1, 1).toFixed(2));
+      tag($('hum-' + x[1] + '-tag'), st[0], st[1]);
+      $('hum-' + x[1] + '-key').textContent = S.vals[x[0]] ? 'ESP32: ' + S.vals[x[0]].key + ' (Slave ' + S.vals[x[0]].slave + ')' : 'menunggu data';
+    });
+    $('room-temp').textContent = txt('suhuRuang');
+  }
+
+  function tdsPct(g) { return g === null ? 0 : clamp(g / CFG.tds.max, 0, 1); }
+  function tdsStatus(g) {
+    if (g === null) return ['idle', 'Menunggu', -1];
+    if (g < CFG.tds.rendah) return ['info', 'Rendah', 0];
+    if (g < CFG.tds.pekat) return ['ok', 'Sedang', 1];
+    return ['warn', 'Pekat', 2];
+  }
+  function renderGaram() {
+    var G = S.vals.garam, g = num('garam'), p = tdsPct(g), st = tdsStatus(g);
+    $('garam-val').textContent = G ? G.num : '—';
+    $('garam-unit').textContent = G ? G.unit : CFG.tds.unit;
+    $('tds-arc').style.strokeDashoffset = (157.1 * (1 - p)).toFixed(1);
+    $('tds-needle').style.transform = 'rotate(' + (-90 + 180 * p).toFixed(1) + 'deg)';
+    $('beaker-milk').style.opacity = (p * .9).toFixed(2);
+    var nC = g === null ? 2 : Math.max(1, Math.round(p * 12));
+    Array.prototype.forEach.call($('shaker').querySelectorAll('.crystal'), function (el, i) { el.style.display = i < nC ? '' : 'none'; });
+    tag($('garam-tag'), st[0], st[1]);
+    var u = CFG.tds.unit;
+    $('tds-zones').innerHTML = ['Rendah < ' + CFG.tds.rendah, 'Sedang', 'Pekat ≥ ' + CFG.tds.pekat].map(function (z, i) {
+      return '<span class="' + (i === st[2] ? 'is-on' : '') + '">' + z + '</span>';
+    }).join('');
+    $('garam-note').textContent = 'Skala meter 0 – ' + CFG.tds.max + ' ' + u + (g !== null && g > CFG.tds.max ? ' · nilai melebihi skala' : '');
+    $('garam-key').textContent = G ? 'ESP32: ' + G.key : 'menunggu data';
+  }
+
+  function renderMqtt() {
+    var sig = $('sig'), k = S.mqtt ? 'ok' : S.connecting ? 'wait' : 'bad';
+    sig.className = 'sig ' + k + (sig.classList.contains('flash') ? ' flash' : '');
+    tag($('mq-tag'), k, S.mqtt ? 'Online' : S.connecting ? 'Menyambung' : 'Terputus');
+    $('mq-broker').textContent = S.mqtt ? 'Terhubung' : S.connecting ? 'Menyambung...' : 'Terputus, mencoba lagi';
+    $('mq-esp').textContent = S.esp === true ? 'Online' : S.esp === false ? 'Offline' : 'Menunggu';
+    $('mq-count').textContent = S.msgCount;
+    $('mq-last').textContent = S.lastMsg ? ago(S.lastMsg) + ' · ' + S.lastTopic : '—';
+    $('mq-host').textContent = 'wss://' + CFG.host + ':' + CFG.port;
+  }
+
+  function slaveStatus(n) {
+    var sl = S.slave[n];
+    if (sl.ok === false) return ['bad', 'No Respon'];
+    if (!sl.t) return ['idle', 'Menunggu'];
+    if (Date.now() - sl.t > CFG.staleSec * 1000) return ['warn', 'Terlambat'];
+    return ['ok', 'Aktif'];
+  }
+  function renderDevices() {
+    $('dev-list').innerHTML = DEVICES.map(function (d) {
+      var sl = S.slave[d.n], st = slaveStatus(d.n);
+      var rows = d.items.map(function (it) {
+        var v = S.vals[it.id], val, key;
+        if (it.id === 'heater') { val = S.heater === null ? '—' : S.heater ? 'MENYALA' : 'MATI'; key = S.heaterKey || 'telur/slave/led'; }
+        else { val = v ? v.num + (v.unit ? ' ' + v.unit : '') : '—'; key = v ? v.key + (v.slave !== d.n ? ' (dari Slave ' + v.slave + ')' : '') : 'belum ada data'; }
+        return '<li class="dev-item"><div class="dev-ic" style="--c:' + META[it.id].color + '">' + ICON[META[it.id].icon] + '</div>' +
+          '<div class="dev-tx"><b>' + esc(it.alat) + '</b><p>' + esc(it.fungsi) + '</p><p class="mono">kunci data: ' + esc(key) + '</p></div>' +
+          '<div class="dev-val mono">' + esc(val) + '</div></li>';
+      }).join('');
+      var ex = Object.keys(sl.extra);
+      var extra = ex.length ? '<p class="dev-extra">Data lain: ' + ex.map(function (k) { return '<b>' + esc(k) + '</b> = ' + esc(sl.extra[k]); }).join(' · ') + '</p>' : '';
+      return '<article class="card dev-card">' +
+        '<div class="dev-head"><div class="dev-badge ' + d.color + '">' + d.n + '</div><div><h3>' + esc(d.name) + '</h3><p>' + esc(d.role) + '</p></div>' +
+        '<span class="tag ' + st[0] + '">' + st[1] + '</span></div>' +
+        '<p class="dev-place">' + esc(d.place) + '</p><ul class="dev-items">' + rows + '</ul>' + extra +
+        '<div class="dev-foot"><span>Topik: <code>telur/slave/' + d.n + '</code></span><span>Terakhir: ' + (sl.t ? hhmmss(new Date(sl.t)) : '—') + '</span></div>' +
+        '</article>';
+    }).join('');
+    $('raw-1').textContent = S.slave[1].raw;
+    $('raw-2').textContent = S.slave[2].raw;
+  }
+
+  function renderAll() {
+    renderPill(); renderTank(); renderLevel(); renderLamp(); renderTemp();
+    renderHum(); renderGaram(); renderMqtt(); renderDevices(); checkLevelAlert();
+  }
+
+  /* =====================================================================
+     DATA MASUK DARI SLAVE
+     ===================================================================== */
+  function setVal(id, key, val, n) {
+    if (id === 'heater') { S.heater = isOn(val); S.heaterKey = key + ' (Slave ' + n + ')'; S.pending = 0; return; }
+    var v = splitVal(val);
+    S.vals[id] = { num: v.num, n: v.n, unit: v.unit || META[id].unit, key: key, slave: n, t: Date.now() };
+    if (id === 'level') {
+      var p = levelPct();
+      if (p !== null && load('telur-level-base', null) === null) save('telur-level-base', Math.round(p * 10) / 10);
+    }
+  }
+  function pickSlot(n, k, i, used) {
+    if (/^Data \d+$/.test(k)) { var o = ORDER[n][i]; return o && !used[o] ? o : null; }
+    for (var a = 0; a < SPECIFIC.length; a++) if (!used[SPECIFIC[a][0]] && SPECIFIC[a][1](k)) return SPECIFIC[a][0];
+    var g = GENERIC[n];
+    for (var b = 0; b < g.length; b++) if (!used[g[b][0]] && g[b][1].test(k)) return g[b][0];
+    return null;
+  }
+  function handleSlave(n, raw) {
+    var sl = S.slave[n];
+    sl.raw = raw + '  (' + hhmmss() + ')';
+    if (/^\s*NO RESPON\s*$/i.test(raw)) { sl.ok = false; renderAll(); return; }
+    sl.ok = true; sl.t = Date.now(); S.esp = true;
+    var used = {};
+    parsePairs(raw).forEach(function (kv, i) {
+      if (/^(hari|day)$/i.test(kv[0])) { var dn = parseInt(kv[1], 10); if (dn > 0) { S.espDay = dn; cycle(); } return; }
+      var id = pickSlot(n, kv[0], i, used);
+      if (id) { used[id] = 1; setVal(id, kv[0], kv[1], n); } else sl.extra[kv[0]] = kv[1];
+    });
+    renderAll();
+    maybeSample();
+  }
+
+  /* =====================================================================
+     LAMPU
+     ===================================================================== */
+  $('lamp-btn').addEventListener('click', function () {
+    if (!S.mqtt || !client) { toast('Tidak terhubung ke broker'); renderLamp(); return; }
+    var on = !S.heater;
+    var msg = new Paho.MQTT.Message(on ? 'ON' : 'OFF');
+    msg.destinationName = CFG.cmd; msg.qos = 1;
+    try { client.send(msg); } catch (e) { toast('Gagal mengirim perintah'); return; }
+    S.heater = on; S.pending = Date.now();   // diperbarui lagi oleh respons slave (telur/slave/led)
+    renderAll();
+  });
+
+  /* =====================================================================
+     JAM ESP32 & SIKLUS HARI (sama seperti program sebelumnya)
+     ===================================================================== */
+  function setEspTime(t) {
+    var m = t.match(/(\d+):(\d+):(\d+)/); if (!m) return;
+    var d = new Date();
+    S.espOffset = (+m[1] * 3600 + +m[2] * 60 + +m[3]) - (d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds());
+  }
+  function cycle() {
+    var st; try { st = localStorage.getItem('cycleStart'); } catch (e) {}
+    if (!st) { st = new Date().toDateString(); try { localStorage.setItem('cycleStart', st); } catch (e) {} }
+    var day = S.espDay !== null ? S.espDay : Math.floor((new Date(new Date().toDateString()) - new Date(st)) / 864e5) + 1;
+    if (!(day >= 1)) day = 1;
+    S.day = day;
+    var total = S.totalDays;
+    $('day-badge').textContent = 'DAY - ' + day;
+    $('day-num').textContent = day;
+    $('day-total').textContent = total;
+    $('cycle-eta').textContent = day > total ? 'Siklus selesai' : day === total ? 'Estimasi Panen: hari ini' : 'Estimasi Panen: ' + (total - day) + ' Hari Lagi';
+    $('cycle-bar').style.width = clamp(day / total, 0, 1) * 100 + '%';
+    var pips = '';
+    if (total <= 21) for (var i = 1; i <= total; i++) pips += '<span class="pip ' + (i < day ? 'done' : i === day ? 'now' : '') + '">' + i + '</span>';
+    $('pips').innerHTML = pips;
+    renderTank();
+    checkDayAlert();
+  }
+  function askDay() {
+    var n = parseInt(prompt('Hari ke berapa sekarang? (1-' + S.totalDays + ')', S.day), 10);
+    if (!(n >= 1)) return;
+    var d = new Date(); d.setDate(d.getDate() - (n - 1));
+    try { localStorage.setItem('cycleStart', d.toDateString()); } catch (e) {}
+    S.espDay = null; cycle();
+  }
+  $('day-badge').addEventListener('click', askDay);
+  $('day-set').addEventListener('click', askDay);
+  $('cycle-text').addEventListener('click', function () {
+    var n = parseInt(prompt('Lama siklus pengasinan (hari)?', S.totalDays), 10);
+    if (!(n >= 1)) return;
+    S.totalDays = n;
+    try { localStorage.setItem('cycleDays', String(n)); } catch (e) {}
+    cycle();
+  });
+
+  /* =====================================================================
+     PERINGATAN (hari ke-7 & air rendah) — hanya bisa ditutup dengan tombol Close
+     ===================================================================== */
+  var DAY_KEY = 'day7-alert-closed', lowArmed = true;
+  function isOpen(id) { return $(id).classList.contains('is-open'); }
+  function anyOpen() { return isOpen('day7-overlay') || isOpen('lvl-overlay') || isOpen('reset-overlay'); }
+  function openOv(id, focusId, vib) {
+    if (isOpen(id)) return;
+    var o = $(id); o.classList.add('is-open'); o.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+    try { if (vib && navigator.vibrate) navigator.vibrate(vib); } catch (e) {}
+    $(focusId).focus();
+  }
+  function closeOv(id) {
+    var o = $(id); o.classList.remove('is-open'); o.setAttribute('aria-hidden', 'true');
+    if (!anyOpen()) document.body.style.overflow = '';
+  }
+  function checkDayAlert() {
+    if (S.day !== CFG.alertDay) { try { sessionStorage.removeItem(DAY_KEY); } catch (e) {} return; }
+    var closed; try { closed = sessionStorage.getItem(DAY_KEY) === '1'; } catch (e) {}
+    if (!closed) {
+      $('day7-kicker').textContent = 'DAY - ' + CFG.alertDay;
+      $('day7-title').textContent = 'Peringatan Hari ke-' + CFG.alertDay;
+      $('day7-desc').textContent = 'Siklus pengasinan telur sudah mencapai hari ke-' + CFG.alertDay + '. Segera periksa kondisi telur dan kepekatan larutan garam.';
+      openOv('day7-overlay', 'day7-close', [200, 100, 200]);
+    }
+  }
+  $('day7-close').addEventListener('click', function () {
+    closeOv('day7-overlay');
+    try { sessionStorage.setItem(DAY_KEY, '1'); } catch (e) {}
+    setTimeout(checkLevelAlert, 150);
+  });
+  function checkLevelAlert() {
+    var p = levelPct(); if (p === null) return;   // tunggu data asli dari sensor
+    if (p >= CFG.levelReset) lowArmed = true;
+    $('lvl-now').textContent = txt('level') + ' (' + Math.round(p) + '%)';
+    if (isOpen('lvl-overlay')) return;
+    if (p < CFG.levelLow && lowArmed && !isOpen('day7-overlay')) openOv('lvl-overlay', 'lvl-close', [300, 150, 300]);
+  }
+  $('lvl-close').addEventListener('click', function () { closeOv('lvl-overlay'); lowArmed = false; });
+  document.addEventListener('keydown', function (e) {
+    if (!isOpen('day7-overlay') && !isOpen('lvl-overlay')) {
+      if (e.key === 'Escape' && isOpen('reset-overlay')) closeOv('reset-overlay');
+      return;
+    }
+    if (e.key === 'Escape' || e.key === 'Tab') e.preventDefault();
+  });
+
+  /* =====================================================================
+     RIWAYAT DATA — 3x sehari, digabung terus dari hari ke hari
+     ===================================================================== */
+  var HKEY = 'telur-history';
+  function history() { return load(HKEY, []); }
+  function sesiNow(d) {
+    d = d || new Date();
+    var h = d.getHours() + d.getMinutes() / 60, list = CFG.sesi, idx = -1, date = new Date(d), prev = false;
+    for (var i = 0; i < list.length; i++) if (h >= list[i].from) idx = i;
+    if (idx < 0) { idx = list.length - 1; date.setDate(date.getDate() - 1); prev = true; }   // dini hari = sesi malam kemarin
+    return { idx: idx, name: list[idx].name, date: ymd(date), key: ymd(date) + '#' + idx, prev: prev };
+  }
+  function fresh() {
+    var t = Math.max(S.slave[1].t, S.slave[2].t);
+    return t && Date.now() - t < 10 * 60e3 && FIELDS.some(function (f) { return num(f) !== null; });
+  }
+  function maybeSample(force) {
+    var s = sesiNow(), H = history();
+    if (!force && H.some(function (r) { return r.key === s.key; })) return;
+    if (!force && !fresh()) return;
+    var rec = { key: force ? s.key + '#m' + Date.now() : s.key, t: new Date().toISOString(), date: s.date, sesi: s.name,
+      day: s.prev && S.espDay === null ? Math.max(1, S.day - 1) : S.day };
+    FIELDS.forEach(function (f) { rec[f] = num(f); });
+    rec.garamUnit = S.vals.garam ? S.vals.garam.unit : '';
+    rec.lampu = S.heater === null ? null : S.heater ? 1 : 0;
+    H.push(rec);
+    if (H.length > 2000) H = H.slice(-2000);
+    save(HKEY, H);
+    renderHistory();
+    toast('Data sesi ' + s.name + ' tersimpan');
+  }
+
+  function renderHistory() {
+    var H = history();
+    tag($('hist-count'), H.length ? 'ok' : 'idle', H.length + ' data');
+    var rows = H.slice().reverse().slice(0, 60).map(function (r) {
+      var d = new Date(r.t), f = function (v) { return v === null || v === undefined ? '—' : fmtNum(v); };
+      return '<tr><td>' + ymd(d) + ' ' + hhmm(d) + '</td><td>' + r.day + '</td><td>' + esc(r.sesi) + '</td><td>' + f(r.garam) + '</td><td>' + f(r.suhuAir) +
+        '</td><td>' + f(r.level) + '</td><td>' + f(r.humIn) + '</td><td>' + f(r.humOut) + '</td><td>' + f(r.suhuRuang) + '</td><td>' +
+        (r.lampu === null ? '—' : r.lampu ? 'ON' : 'OFF') + '</td></tr>';
+    }).join('');
+    $('hist-body').innerHTML = rows || '<tr><td class="empty" colspan="10">Belum ada data tersimpan</td></tr>';
+    renderSesi(H);
+    renderChart();
+  }
+  function renderSesi(H) {
+    var now = sesiNow();
+    $('sesi-info').textContent = 'Disimpan 3× sehari: ' + CFG.sesi.map(function (s) { return s.name + ' ' + pad(s.from) + '.00'; }).join(' · ');
+    $('sesi-row').innerHTML = CFG.sesi.map(function (s, i) {
+      var rec = H.filter(function (r) { return r.key === now.date + '#' + i; })[0], cls = '', st;
+      if (rec) { cls = 'done'; st = '✓ Tersimpan ' + hhmm(new Date(rec.t)); }
+      else if (i === now.idx) { cls = 'now'; st = 'Berjalan, menunggu data'; }
+      else if (i < now.idx) st = 'Terlewat (halaman tertutup)';
+      else st = 'Mulai ' + pad(s.from) + '.00';
+      return '<div class="sesi ' + cls + '"><b>' + s.name + '</b><em>' + st + '</em></div>';
+    }).join('');
+  }
+
+  /* ============ GRAFIK ============ */
+  var chart = null, group = load('telur-chart-group', 'suhu');
+  var bgPlugin = { id: 'bg', beforeDraw: function (c) { var x = c.ctx; x.save(); x.globalCompositeOperation = 'destination-over'; x.fillStyle = '#0c1324'; x.fillRect(0, 0, c.width, c.height); x.restore(); } };
+  function buildTabs() {
+    $('chart-tabs').innerHTML = GROUPS.map(function (g) {
+      return '<button type="button" role="tab" data-g="' + g.id + '" class="' + (g.id === group ? 'is-active' : '') + '">' + g.label + '</button>';
+    }).join('');
+    $('chart-tabs').addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      group = b.dataset.g; save('telur-chart-group', group);
+      Array.prototype.forEach.call(this.children, function (x) { x.classList.toggle('is-active', x === b); });
+      renderChart();
+    });
+  }
+  function renderChart() {
+    var H = history(), g = GROUPS.filter(function (x) { return x.id === group; })[0] || GROUPS[0];
+    var empty = $('chart-empty');
+    if (typeof Chart === 'undefined') { empty.textContent = 'Grafik tidak bisa dimuat (library Chart.js gagal diunduh). Periksa koneksi internet.'; empty.style.display = 'flex'; return; }
+    empty.style.display = H.length ? 'none' : 'flex';
+    var unit = g.id === 'garam' ? ((H.length && H[H.length - 1].garamUnit) || CFG.tds.unit) : g.unit;
+    var labels = H.map(function (r) { return 'H' + r.day + ' ' + r.sesi; });
+    var ds = g.fields.map(function (f) {
+      return { label: META[f].label, data: H.map(function (r) { return r[f] === undefined ? null : r[f]; }),
+        borderColor: META[f].color, backgroundColor: META[f].color + '30', pointBackgroundColor: META[f].color,
+        fill: g.fields.length === 1, tension: .35, borderWidth: 2.5, pointRadius: 3.5, pointHoverRadius: 6, spanGaps: true };
+    });
+    if (!chart) {
+      Chart.defaults.font.family = "'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
+      chart = new Chart($('chart'), {
+        type: 'line', data: { labels: labels, datasets: ds }, plugins: [bgPlugin],
+        options: {
+          responsive: true, maintainAspectRatio: false, animation: { duration: 700 },
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { labels: { color: '#cbd5e1', boxWidth: 12, boxHeight: 12, usePointStyle: true, font: { weight: '600' } } },
+            tooltip: { backgroundColor: 'rgba(15,23,42,.95)', borderColor: 'rgba(148,163,184,.3)', borderWidth: 1, padding: 10,
+              callbacks: { title: function (it) { var r = history()[it[0].dataIndex]; if (!r) return ''; var d = new Date(r.t); return 'Hari ' + r.day + ' · ' + r.sesi + ' (' + ymd(d) + ' ' + hhmm(d) + ')'; } } }
+          },
+          scales: {
+            x: { ticks: { color: '#94a3b8', maxRotation: 0, autoSkip: true }, grid: { color: 'rgba(148,163,184,.08)' } },
+            y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148,163,184,.08)' }, title: { display: true, color: '#94a3b8', text: '' } }
+          }
+        }
+      });
+    }
+    chart.data.labels = labels; chart.data.datasets = ds;
+    chart.options.scales.y.title.text = g.label + (unit ? ' (' + unit + ')' : '');
+    chart.options.scales.y.min = g.min; chart.options.scales.y.max = g.max;
+    chart.update();
+  }
+
+  /* ============ DOWNLOAD ============ */
+  function download(name, blob) {
+    var a = document.createElement('a'), url = URL.createObjectURL(blob);
+    a.href = url; a.download = name; document.body.appendChild(a); a.click();
+    setTimeout(function () { URL.revokeObjectURL(url); a.remove(); }, 500);
+  }
+  $('dl-csv').addEventListener('click', function () {
+    var H = history();
+    if (!H.length) { toast('Belum ada data untuk di-download'); return; }
+    var gu = (H[H.length - 1].garamUnit || '').trim();
+    var head = ['Tanggal', 'Jam', 'Hari ke', 'Sesi', 'Kepekatan Garam' + (gu ? ' (' + gu + ')' : ''), 'Suhu Air (°C)', 'Ketinggian Air (%)',
+      'Kelembaban Dalam (%)', 'Kelembaban Luar (%)', 'Suhu Ruang (°C)', 'Lampu'];
+    var cell = function (v) { return v === null || v === undefined ? '' : String(fmtNum(v, 2)); };
+    var lines = [head.join(';')].concat(H.map(function (r) {
+      var d = new Date(r.t);
+      return [ymd(d), hhmm(d).replace('.', ':'), r.day, r.sesi, cell(r.garam), cell(r.suhuAir), cell(r.level), cell(r.humIn), cell(r.humOut), cell(r.suhuRuang),
+        r.lampu === null ? '' : r.lampu ? 'ON' : 'OFF'].map(function (v) { return String(v).replace('.', ','); }).join(';');
+    }));
+    download('data-telur-asin_' + ymd(new Date()) + '.csv', new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' }));
+    toast('File CSV di-download');
+  });
+  $('dl-png').addEventListener('click', function () {
+    if (!chart || !history().length) { toast('Belum ada grafik untuk di-download'); return; }
+    var a = document.createElement('a');
+    a.href = chart.toBase64Image('image/png', 1);
+    a.download = 'grafik-' + group + '_' + ymd(new Date()) + '.png';
+    document.body.appendChild(a); a.click(); a.remove();
+    toast('Gambar grafik di-download');
+  });
+
+  /* ============ RESET ============ */
+  $('btn-reset').addEventListener('click', function () { openOv('reset-overlay', 'reset-cancel'); });
+  $('reset-cancel').addEventListener('click', function () { closeOv('reset-overlay'); });
+  $('reset-overlay').addEventListener('click', function (e) { if (e.target === this) closeOv('reset-overlay'); });
+  $('reset-ok').addEventListener('click', function () {
+    try {
+      localStorage.removeItem(HKEY);
+      localStorage.removeItem('telur-level-base');
+      localStorage.setItem('cycleStart', new Date().toDateString());
+      sessionStorage.removeItem(DAY_KEY);
+    } catch (e) {}
+    S.espDay = null; lowArmed = true;
+    var p = levelPct(); if (p !== null) save('telur-level-base', Math.round(p * 10) / 10);
+    closeOv('reset-overlay');
+    cycle(); renderAll(); renderHistory();
+    toast('Hari dan semua data sudah di-reset');
+  });
+
+  /* =====================================================================
+     NAVIGASI HALAMAN
+     ===================================================================== */
+  /* Halaman berbentuk slide: geser kiri/kanan (HP), tombol menu bawah,
+     atau tombol panah ← → di keyboard (desktop). */
+  var PAGES = ['dashboard', 'grafik', 'perangkat'], cur = 0;
+  var slider = $('slider'), track = $('track');
+  function pageEl(i) { return $('page-' + PAGES[i]); }
+  function fitHeight() { slider.style.height = pageEl(cur).offsetHeight + 'px'; }
+  function moveGlider() {
+    var b = document.querySelectorAll('.bn')[cur], g = $('bn-glider');
+    if (!b) return;
+    g.style.width = b.offsetWidth + 'px';
+    g.style.transform = 'translateX(' + (b.offsetLeft - 6) + 'px)';
+  }
+  function go(p, fromHash) {
+    var i = typeof p === 'number' ? p : PAGES.indexOf(p);
+    if (i < 0) i = 0;
+    i = clamp(i, 0, PAGES.length - 1);
+    var changed = i !== cur; cur = i;
+    track.style.transform = 'translateX(' + (-100 * cur) + '%)';
+    PAGES.forEach(function (x, k) {
+      var el = pageEl(k), on = k === cur;
+      el.classList.toggle('is-active', on);
+      el.setAttribute('aria-hidden', on ? 'false' : 'true');
+      if (on) el.removeAttribute('inert'); else el.setAttribute('inert', '');
+    });
+    document.querySelectorAll('.bn').forEach(function (b, k) { b.classList.toggle('is-active', k === cur); });
+    document.querySelectorAll('#slide-dots i').forEach(function (d, k) { d.classList.toggle('is-active', k === cur); });
+    moveGlider();
+    if (PAGES[cur] === 'grafik') { renderHistory(); if (chart) chart.resize(); }
+    fitHeight();
+    if (!fromHash && location.hash.slice(1) !== PAGES[cur]) { try { history_.replaceState(null, '', '#' + PAGES[cur]); } catch (e) {} }
+    if (changed) window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+  var history_ = window.history;
+  document.querySelectorAll('.bn').forEach(function (b) {
+    b.addEventListener('click', function () { go(b.dataset.page); });
+  });
+  window.addEventListener('hashchange', function () { go(location.hash.slice(1), true); });
+  window.addEventListener('resize', function () { fitHeight(); moveGlider(); });
+  if (window.ResizeObserver) PAGES.forEach(function (x, k) { new ResizeObserver(function () { if (k === cur) fitHeight(); }).observe(pageEl(k)); });
+  document.addEventListener('keydown', function (e) {
+    if (anyOpen() || /input|textarea|select/i.test((e.target || {}).tagName || '')) return;
+    if (e.key === 'ArrowRight') go(cur + 1);
+    if (e.key === 'ArrowLeft') go(cur - 1);
+  });
+
+  // Geser dengan jari (atau tarik dengan mouse)
+  (function swipe() {
+    var x0 = 0, y0 = 0, dx = 0, dragging = false, decided = false, horiz = false, w = 1;
+    function start(x, y, target) {
+      if (target.closest('[data-noswipe], button, a, input')) return false;
+      x0 = x; y0 = y; dx = 0; dragging = true; decided = false; horiz = false; w = slider.offsetWidth || 1;
+      return true;
+    }
+    function move(x, y, e) {
+      if (!dragging) return;
+      var mx = x - x0, my = y - y0;
+      if (!decided) {
+        if (Math.abs(mx) < 8 && Math.abs(my) < 8) return;
+        decided = true; horiz = Math.abs(mx) > Math.abs(my) * 1.2;
+        if (!horiz) { dragging = false; return; }
+        track.classList.add('dragging');
+      }
+      if (e && e.cancelable) e.preventDefault();
+      dx = mx;
+      if ((cur === 0 && dx > 0) || (cur === PAGES.length - 1 && dx < 0)) dx *= .3;   // efek mentok di ujung
+      track.style.transform = 'translateX(calc(' + (-100 * cur) + '% + ' + dx + 'px))';
+    }
+    function end() {
+      if (!dragging) return;
+      dragging = false; track.classList.remove('dragging');
+      if (!horiz) return;
+      var th = Math.min(90, w * .18);
+      if (dx < -th) go(cur + 1); else if (dx > th) go(cur - 1); else go(cur);
+    }
+    slider.addEventListener('touchstart', function (e) { var t = e.touches[0]; start(t.clientX, t.clientY, e.target); }, { passive: true });
+    slider.addEventListener('touchmove', function (e) { var t = e.touches[0]; move(t.clientX, t.clientY, e); }, { passive: false });
+    slider.addEventListener('touchend', end);
+    slider.addEventListener('touchcancel', end);
+    slider.addEventListener('mousedown', function (e) { if (e.button === 0 && start(e.clientX, e.clientY, e.target)) e.preventDefault(); });
+    window.addEventListener('mousemove', function (e) { move(e.clientX, e.clientY, null); });
+    window.addEventListener('mouseup', end);
+  })();
+
+  /* =====================================================================
+     MQTT
+     ===================================================================== */
+  function flash() {
+    var s = $('sig'), p = $('mqtt-pill');
+    s.classList.add('flash'); p.classList.add('flash');
+    setTimeout(function () { s.classList.remove('flash'); p.classList.remove('flash'); }, 350);
+  }
+  function onMsg(m) {
+    var tail = m.destinationName.split('/').pop(), t = m.payloadString;
+    S.msgCount++; S.lastMsg = Date.now(); S.lastTopic = tail; flash();
+    if (tail === 'status') { S.esp = /online/i.test(t); renderAll(); return; }
+    if (m.retained) { renderMqtt(); return; }        // abaikan data lama di broker
+    if (tail === 'siklus') {
+      var mm = t.match(/HARI:(\d+).*TARGET:(\d+)/i);
+      if (mm) { S.espDay = parseInt(mm[1], 10); S.totalDays = parseInt(mm[2], 10); cycle(); }
+      renderMqtt(); return;
+    }
+    if (tail === 'time') { setEspTime(t); renderMqtt(); return; }
+    if (tail === 'led') { S.heater = isOn(t); S.heaterKey = 'telur/slave/led'; S.pending = 0; renderAll(); return; }
+    if (tail === '1' || tail === '2') handleSlave(+tail, t);
+  }
+  function connect() {
+    if (typeof Paho === 'undefined') { S.connecting = false; renderAll(); toast('Library MQTT gagal dimuat, periksa internet'); return; }
+    S.connecting = true; renderAll();
+    client = new Paho.MQTT.Client(CFG.host, CFG.port, 'web_' + Math.random().toString(16).slice(2, 10));
+    client.onConnectionLost = function () { S.mqtt = false; S.connecting = false; S.esp = null; renderAll(); setTimeout(connect, 5000); };
+    client.onMessageArrived = onMsg;
+    client.connect({
+      useSSL: true, userName: CFG.user, password: CFG.pass, keepAliveInterval: 30, timeout: 10,
+      onSuccess: function () { S.mqtt = true; S.connecting = false; renderAll(); client.subscribe(CFG.sub, { qos: 0 }); },
+      onFailure: function () { S.mqtt = false; S.connecting = false; renderAll(); setTimeout(connect, 8000); }
+    });
+  }
+
+  /* =====================================================================
+     JAM & PEMERIKSAAN BERKALA
+     ===================================================================== */
+  var lastDate = new Date().toDateString(), tickN = 0;
+  function tick() {
+    var d = new Date();
+    $('live-header-clock').textContent = hhmmss(d) + ' WIB';
+    if (S.espOffset !== null) {
+      var s = ((d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds() + S.espOffset) % 86400 + 86400) % 86400;
+      $('live-footer-clock').textContent = pad(Math.floor(s / 3600)) + '.' + pad(Math.floor(s / 60) % 60) + '.' + pad(s % 60) + ' WIB';
+    }
+    if (d.toDateString() !== lastDate) { lastDate = d.toDateString(); cycle(); }   // ganti hari tengah malam
+    if (S.pending && Date.now() - S.pending >= 4000) { S.pending = 0; renderLamp(); }
+    if (++tickN % 5 === 0) { renderMqtt(); renderDevices(); }
+    if (tickN % 30 === 0) { maybeSample(); renderSesi(history()); }
+  }
+
+  /* ============ MULAI ============ */
+  buildScene(); buildTabs();
+  cycle(); renderAll(); renderHistory();
+  go(location.hash.slice(1));
+  tick(); setInterval(tick, 1000);
+  connect();
+
+  // Untuk uji coba lewat Console browser:
+  window.showDay7Alert = function () { openOv('day7-overlay', 'day7-close', [200, 100, 200]); };
+  window.showLevelAlert = function () { openOv('lvl-overlay', 'lvl-close', [300, 150, 300]); };
+  window.simpanSekarang = function () { maybeSample(true); };                 // simpan 1 data sekarang
+  window.uji = function (n, teks) { handleSlave(n, teks); };                   // contoh: uji(1, 'garam:22,suhu:29.5,level:64')
+})();
+
+</script>
 </body>
 </html>
