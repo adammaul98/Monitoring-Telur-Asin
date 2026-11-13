@@ -2,444 +2,406 @@
 <html lang="id">
 <head>
 <meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<meta name="theme-color" content="#060a14"/>
 <title>SaltingEgg IoT - Smart Egg Brining System</title>
 
-<!-- Tailwind CSS CDN + konfigurasi -->
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<script src="tailwind-config.js"></script>
-
-<!-- CSS kustom -->
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="style.css"/>
 
-<!-- Animasi peringatan Day 7 -->
-<style>
-@keyframes d7-fade { from { opacity: 0; } to { opacity: 1; } }
-@keyframes d7-pop { 0% { opacity: 0; transform: scale(.6) translateY(24px); } 70% { transform: scale(1.04); } 100% { opacity: 1; transform: scale(1); } }
-@keyframes d7-ring { 0% { transform: scale(.8); opacity: .7; } 100% { transform: scale(2.4); opacity: 0; } }
-@keyframes d7-shake { 0%, 100% { transform: rotate(0); } 20% { transform: rotate(-12deg); } 40% { transform: rotate(12deg); } 60% { transform: rotate(-7deg); } 80% { transform: rotate(7deg); } }
-@keyframes d7-glow { 0%, 100% { box-shadow: 0 0 24px rgba(245,158,11,.25); } 50% { box-shadow: 0 0 52px rgba(245,158,11,.6); } }
-#day7-overlay { display: none; }
-#day7-overlay.is-open { display: flex; animation: d7-fade .3s ease-out; }
-#day7-card { animation: d7-pop .5s cubic-bezier(.2,.9,.3,1.2) both, d7-glow 2s ease-in-out .5s infinite; }
-.d7-ring { animation: d7-ring 1.8s ease-out infinite; }
-.d7-icon { animation: d7-shake 1.6s ease-in-out .6s infinite; }
-@media (prefers-reduced-motion: reduce) {
-  #day7-overlay.is-open, #day7-card, .d7-ring, .d7-icon { animation: none; }
-}
-
-/* Peringatan ketinggian air rendah */
-@keyframes lv-glow { 0%, 100% { box-shadow: 0 0 24px rgba(244,63,94,.25); } 50% { box-shadow: 0 0 52px rgba(244,63,94,.6); } }
-@keyframes lv-drop { 0%, 100% { transform: translateY(-3px); } 50% { transform: translateY(4px); } }
-#lvl-overlay { display: none; }
-#lvl-overlay.is-open { display: flex; animation: d7-fade .3s ease-out; }
-#lvl-card { animation: d7-pop .5s cubic-bezier(.2,.9,.3,1.2) both, lv-glow 1.6s ease-in-out .5s infinite; }
-.lv-icon { animation: lv-drop 1.4s ease-in-out infinite; }
-@media (prefers-reduced-motion: reduce) {
-  #lvl-overlay.is-open, #lvl-card, .lv-icon { animation: none; }
-}
-</style>
-
-<!-- MQTT client -->
+<!-- MQTT client + library grafik -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
-<body class="bg-[#050811] text-slate-100 min-h-screen flex justify-center items-start p-0 sm:py-6 lg:py-0 selection:bg-amber-500/30 selection:text-amber-200">
-<!-- BEGIN: MobileDeviceFrame (HP & tablet: bingkai HP, laptop: layar penuh) -->
-<div class="w-full sm:max-w-[412px] lg:max-w-none bg-[#090e1c] min-h-screen sm:min-h-[890px] lg:min-h-screen sm:rounded-[44px] lg:rounded-none shadow-2xl lg:shadow-none border-0 sm:border-[6px] lg:border-0 sm:border-slate-800/80 flex flex-col relative overflow-hidden ring-1 lg:ring-0 ring-slate-700/50" data-purpose="phone-container">
-<!-- Ambient background glows -->
-<div class="absolute -top-28 -left-28 w-64 h-64 bg-amber-500/15 rounded-full blur-3xl pointer-events-none"></div>
-<div class="absolute top-1/3 -right-28 w-72 h-72 bg-emerald-600/10 rounded-full blur-3xl pointer-events-none"></div>
-<div class="absolute bottom-20 left-10 w-60 h-60 bg-cyan-600/10 rounded-full blur-3xl pointer-events-none"></div>
+<body>
 
-<!-- BEGIN: AppHeader -->
-<header class="px-5 lg:px-8 pt-6 pb-3.5 lg:pb-4 z-20 border-b border-slate-800/60 glass-panel">
-<div class="flex items-center justify-between lg:max-w-6xl lg:mx-auto">
-<div>
-<h1 class="text-base lg:text-xl font-extrabold tracking-wide text-white">SaltingEgg IoT</h1>
-<p class="text-[11px] lg:text-xs text-slate-400">Monitoring pengasinan telur asin</p>
-</div>
-<div id="esp-pill" class="flex items-center space-x-1.5 px-2.5 py-1 rounded-full border bg-amber-950/80 border-amber-500/50"><span class="relative inline-flex rounded-full h-2 w-2 bg-amber-400" id="esp-dot"></span><span class="text-[11px] font-semibold text-amber-300 tracking-tight" id="esp-text">Menghubungkan...</span></div>
-</div>
+<!-- ================= HEADER ================= -->
+<header class="topbar">
+  <div class="topbar-in">
+    <div class="brand">
+      <div class="logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M12 2.5c-3.9 0-7 6-7 10.5a7 7 0 0 0 14 0C19 8.5 15.9 2.5 12 2.5z"/></svg>
+      </div>
+      <div>
+        <h1>SaltingEgg IoT</h1>
+        <p>Monitoring pengasinan telur asin</p>
+      </div>
+    </div>
+    <div id="mqtt-pill" class="pill wait"><span class="pill-dot"></span><span id="mqtt-pill-text">Menghubungkan...</span></div>
+  </div>
 </header>
-<!-- END: AppHeader -->
 
-<!-- BEGIN: MainContent (HP: 1 kolom, laptop: 2 kolom) -->
-<main class="flex-1 px-4 py-3 space-y-4 overflow-y-auto z-10 pb-6 lg:grid lg:grid-cols-2 lg:gap-6 lg:space-y-0 lg:items-start lg:px-8 lg:py-6 lg:pb-8 lg:max-w-6xl lg:mx-auto lg:w-full">
+<main class="app">
+<div class="slider" id="slider"><div class="track" id="track">
 
-<!-- BEGIN: SectionSlave1 -->
-<section class="space-y-2.5" data-purpose="slave-1-sensor-section">
-<div class="flex items-center justify-between px-1">
-<div class="flex items-center space-x-2">
-<div class="w-2 h-2 rounded-sm bg-cyan-400 shadow-[0_0_8px_#22d3ee]"></div>
-<h2 class="text-xs font-bold text-slate-200 tracking-wide uppercase">SLAVE 1</h2>
-</div>
-<span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-cyan-950/80 text-cyan-300 border border-cyan-800/60" id="badge-s1">Menunggu</span>
-</div>
-<div class="grid grid-cols-2 gap-2.5">
-<!-- Card 1: Kepekatan Garam -->
-<article class="glass-card p-3 lg:p-4 rounded-2xl border border-cyan-500/20 relative overflow-hidden group hover:border-cyan-500/40 transition-all" data-purpose="salinity-brine-card">
-<div class="absolute -right-4 -bottom-4 w-16 h-16 bg-cyan-500/10 rounded-full blur-xl pointer-events-none"></div>
-<div class="flex items-center justify-between mb-1.5">
-<span class="text-[10px] font-medium tracking-wide uppercase text-slate-400">Kepekatan Garam</span>
-<div class="w-6 h-6 rounded-lg bg-cyan-950/90 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
-<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-<path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
-</svg>
-</div>
-</div>
-<div class="flex items-baseline space-x-1">
-<span class="text-2xl lg:text-3xl font-extrabold text-white tracking-tight" id="v-garam">—</span>
-<span class="text-xs font-semibold text-cyan-400" id="u-garam"></span>
-</div>
-<p class="mt-2.5 text-[9px] text-slate-500 font-mono truncate" id="k-garam">menunggu data</p>
-</article>
-<!-- Card 2: Suhu Air -->
-<article class="glass-card p-3 lg:p-4 rounded-2xl border border-amber-500/20 relative overflow-hidden group hover:border-amber-500/40 transition-all" data-purpose="brine-temp-card">
-<div class="absolute -right-4 -bottom-4 w-16 h-16 bg-amber-500/10 rounded-full blur-xl pointer-events-none"></div>
-<div class="flex items-center justify-between mb-1.5">
-<span class="text-[10px] font-medium tracking-wide uppercase text-slate-400">Suhu Air</span>
-<div class="w-6 h-6 rounded-lg bg-amber-950/90 border border-amber-500/30 flex items-center justify-center text-amber-400">
-<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-<path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"></path>
-</svg>
-</div>
-</div>
-<div class="flex items-baseline space-x-1">
-<span class="text-2xl lg:text-3xl font-extrabold text-white tracking-tight" id="v-suhu1">—</span>
-<span class="text-xs font-semibold text-amber-400" id="u-suhu1"></span>
-</div>
-<p class="mt-2.5 text-[9px] text-slate-500 font-mono truncate" id="k-suhu1">menunggu data</p>
-</article>
-<!-- Card 3: Ketinggian Air -->
-<article class="col-span-2 glass-card p-3 lg:p-4 rounded-2xl border border-cyan-500/25 relative overflow-hidden flex items-center justify-between" data-purpose="brine-level-card">
-<div class="space-y-1">
-<div class="flex items-center space-x-1.5">
-<div class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></div>
-<span class="text-[10px] font-medium tracking-wider uppercase text-slate-400">Ketinggian Air</span>
-</div>
-<div class="flex items-baseline space-x-2">
-<span class="text-xl lg:text-2xl font-black text-white" id="v-level">—</span>
-<span class="text-[11px] text-cyan-300 font-medium" id="u-level"></span>
-</div>
-<p class="text-[10px] text-slate-500 font-mono" id="k-level">menunggu data</p>
-</div>
-<div class="flex flex-col items-center justify-center">
-<div class="relative w-14 h-14 lg:w-16 lg:h-16 rounded-xl bg-slate-900 border border-cyan-500/30 flex items-center justify-center overflow-hidden">
-<div id="gauge-fill" style="height:0%" class="absolute bottom-0 left-0 right-0 transition-all duration-500 bg-gradient-to-t from-cyan-600/80 to-blue-500/60"></div>
-<span class="relative z-20 text-[11px] font-bold text-white font-mono drop-shadow" id="gauge-text">—</span>
-</div>
-</div>
-</article>
-</div>
+<!-- ================= HALAMAN DASHBOARD ================= -->
+<section class="page is-active" id="page-dashboard">
+  <div class="dash">
+
+    <!-- Kotak pengasinan beranimasi -->
+    <article class="card scene-card">
+      <div class="card-h">
+        <div class="card-t"><span class="dot cyan"></span>Kotak Pengasinan</div>
+        <button class="day-chip mono" id="day-badge" type="button" title="Ketuk untuk mengatur hari">DAY - 1</button>
+      </div>
+
+      <div class="scene" id="scene">
+        <div class="cord"></div>
+        <div class="scene-lamp" aria-hidden="true">
+          <svg viewBox="0 0 120 70">
+            <path class="shade" d="M44 4h32l24 40H20z"/>
+            <ellipse class="bulb-g" cx="60" cy="48" rx="13" ry="10"/>
+          </svg>
+        </div>
+        <div class="cone"></div>
+
+        <div class="tank" id="tank">
+          <div class="drops" id="drops"></div>
+          <div class="hum-chip">
+            <svg viewBox="0 0 24 24"><path d="M12 2.7l5.7 5.7a8 8 0 1 1-11.4 0z"/></svg>
+            <span><b id="tank-hum">—</b> RH dalam</span>
+          </div>
+
+          <div class="eggs" id="eggs"></div>
+
+          <div class="water">
+            <div class="wave a"><svg viewBox="0 0 1200 16" preserveAspectRatio="none"><path d="M0 8 Q75 0 150 8 T300 8 T450 8 T600 8 T750 8 T900 8 T1050 8 T1200 8 V16 H0Z"/></svg></div>
+            <div class="wave b"><svg viewBox="0 0 1200 16" preserveAspectRatio="none"><path d="M0 8 Q75 0 150 8 T300 8 T450 8 T600 8 T750 8 T900 8 T1050 8 T1200 8 V16 H0Z"/></svg></div>
+            <div class="water-in"><div id="salt"></div><div id="bubbles"></div></div>
+          </div>
+
+          <div class="lvl-tag" id="lvl-tag"><b id="tank-level">—</b><small id="tank-level-note">menunggu</small></div>
+
+          <div class="thermo" id="thermo" title="Suhu air">
+            <span class="thermo-lbl mono" id="tank-temp">—</span>
+            <div class="thermo-tube"><div class="thermo-fill"></div></div>
+            <div class="thermo-bulb"></div>
+          </div>
+        </div>
+        <div class="floor"></div>
+      </div>
+
+      <div class="scene-stats">
+        <div class="stat"><span>Kepekatan garam</span><b id="st-garam">—</b></div>
+        <div class="stat"><span>Suhu air</span><b id="st-suhu">—</b></div>
+        <div class="stat"><span>Ketinggian air</span><b id="st-level">—</b></div>
+        <div class="stat"><span>Lampu</span><b id="st-lampu">—</b></div>
+      </div>
+    </article>
+
+    <!-- Sensor ketinggian air -->
+    <article class="card">
+      <div class="card-h">
+        <div class="card-t"><span class="dot blue"></span>Ketinggian Air</div>
+        <span class="tag idle" id="lvl-status">Menunggu</span>
+      </div>
+      <div class="lvl-wrap">
+        <div class="lvl-tube" id="lvl-tube">
+          <div class="lvl-fill" id="lvl-fill">
+            <div class="wave a small"><svg viewBox="0 0 1200 16" preserveAspectRatio="none"><path d="M0 8 Q75 0 150 8 T300 8 T450 8 T600 8 T750 8 T900 8 T1050 8 T1200 8 V16 H0Z"/></svg></div>
+          </div>
+          <div class="lvl-tick" style="bottom:75%"></div>
+          <div class="lvl-tick" style="bottom:50%"></div>
+          <div class="lvl-tick" style="bottom:25%"></div>
+          <div class="lvl-low" id="lvl-low-line"><span>batas</span></div>
+        </div>
+        <div class="lvl-info">
+          <div><span class="big" id="lvl-val">—</span><span class="unit" id="lvl-unit"></span></div>
+          <div class="delta" id="lvl-delta">Menunggu data sensor</div>
+          <p class="sub" id="lvl-base">Awal siklus: —</p>
+          <p class="sub mono" id="lvl-key">menunggu data</p>
+        </div>
+      </div>
+    </article>
+
+    <!-- Aktuator lampu -->
+    <article class="card lamp-card" id="lamp-card">
+      <div class="card-h">
+        <div class="card-t"><span class="dot amber"></span>Aktuator Lampu</div>
+        <span class="tag idle" id="lamp-tag">—</span>
+      </div>
+      <div class="lamp-body">
+        <div class="bulb-wrap" aria-hidden="true">
+          <div class="bulb-halo"></div>
+          <svg class="bulb" viewBox="0 0 64 84">
+            <g class="rays">
+              <line x1="32" y1="2" x2="32" y2="-6"/>
+              <line x1="54" y1="10" x2="60" y2="4"/>
+              <line x1="10" y1="10" x2="4" y2="4"/>
+              <line x1="62" y1="30" x2="70" y2="30"/>
+              <line x1="2" y1="30" x2="-6" y2="30"/>
+            </g>
+            <path class="glass" d="M32 8a21 21 0 0 0-12.6 37.8c2.6 2.1 4.6 5.2 4.6 8.2v3h16v-3c0-3 2-6.1 4.6-8.2A21 21 0 0 0 32 8z"/>
+            <path class="fil" d="M26 42l3-7 3 7 3-7 3 7"/>
+            <rect class="cap" x="23" y="58" width="18" height="6" rx="2"/>
+            <rect class="cap" x="24" y="65" width="16" height="6" rx="2"/>
+            <rect class="cap" x="27" y="72" width="10" height="5" rx="2"/>
+          </svg>
+        </div>
+        <div class="lamp-ctl">
+          <p class="big" id="lamp-state">—</p>
+          <p class="sub" id="lamp-note">menunggu data</p>
+          <button class="switch" id="lamp-btn" type="button" role="switch" aria-checked="false" aria-label="Lampu ON/OFF">
+            <span class="sw-txt on">ON</span><span class="sw-txt off">OFF</span><span class="knob"></span>
+          </button>
+        </div>
+      </div>
+    </article>
+
+    <!-- Sensor suhu air -->
+    <article class="card temp-card">
+      <div class="heat" id="heat"><span></span><span></span><span></span></div>
+      <div class="card-h">
+        <div class="card-t"><span class="dot amber"></span>Suhu Air</div>
+        <span class="tag idle" id="temp-tag">Menunggu</span>
+      </div>
+      <div class="row-between">
+        <div><span class="big" id="temp-val">—</span><span class="unit">°C</span></div>
+        <div class="mini-thermo"><div class="mini-thermo-fill" id="mini-thermo-fill"></div></div>
+      </div>
+      <div class="temp-scale">
+        <div class="temp-bar"></div>
+        <div class="temp-marker" id="temp-marker"></div>
+      </div>
+      <div class="scale-lbl mono"><span>10°</span><span>20°</span><span>30°</span><span>40°</span><span>50°</span></div>
+      <p class="sub mono" id="temp-key">menunggu data</p>
+    </article>
+
+    <!-- Kepekatan garam -->
+    <article class="card">
+      <div class="card-h">
+        <div class="card-t"><span class="dot pink"></span>Kepekatan Garam</div>
+        <span class="tag idle" id="garam-tag">Menunggu</span>
+      </div>
+      <div class="garam-body">
+        <div class="shaker" id="shaker" aria-hidden="true"></div>
+        <div class="garam-info">
+          <div><span class="big" id="garam-val">—</span><span class="unit" id="garam-unit"></span></div>
+          <div class="bar"><div class="bar-fill pink" id="garam-bar"></div></div>
+          <p class="sub" id="garam-note">Skala indikator</p>
+          <p class="sub mono" id="garam-key">menunggu data</p>
+        </div>
+      </div>
+    </article>
+
+    <!-- Kelembaban dalam & luar kotak -->
+    <article class="card hum-card span2">
+      <div class="card-h">
+        <div class="card-t"><span class="dot violet"></span>Kelembaban</div>
+        <span class="sub">dalam &amp; luar kotak</span>
+      </div>
+      <div class="hum-grid">
+        <div class="hum-item" id="hum-in-box">
+          <div class="ring">
+            <div class="mist"><i></i><i></i><i></i></div>
+            <div class="rain"><i></i><i></i><i></i><i></i></div>
+            <svg viewBox="0 0 100 100"><circle class="ring-bg" cx="50" cy="50" r="40"/><circle class="ring-fg" id="ring-in" cx="50" cy="50" r="40"/></svg>
+            <div class="ring-c"><b id="hum-in-val">—</b><small>%RH</small></div>
+          </div>
+          <div class="hum-meta">
+            <p class="hum-lbl">Dalam kotak</p>
+            <span class="tag idle" id="hum-in-tag">Menunggu</span>
+            <p class="sub mono" id="hum-in-key">menunggu data</p>
+          </div>
+        </div>
+        <div class="hum-item" id="hum-out-box">
+          <div class="ring">
+            <div class="mist"><i></i><i></i><i></i></div>
+            <div class="rain"><i></i><i></i><i></i><i></i></div>
+            <svg viewBox="0 0 100 100"><circle class="ring-bg" cx="50" cy="50" r="40"/><circle class="ring-fg" id="ring-out" cx="50" cy="50" r="40"/></svg>
+            <div class="ring-c"><b id="hum-out-val">—</b><small>%RH</small></div>
+          </div>
+          <div class="hum-meta">
+            <p class="hum-lbl">Luar kotak</p>
+            <span class="tag idle" id="hum-out-tag">Menunggu</span>
+            <p class="sub">Suhu ruang <b id="room-temp">—</b></p>
+            <p class="sub mono" id="hum-out-key">menunggu data</p>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- Siklus / hari -->
+    <article class="card day-card">
+      <div class="card-h">
+        <div class="card-t"><span class="dot emerald"></span>Siklus Pengasinan</div>
+        <button class="link" id="cycle-text" type="button" title="Ketuk untuk mengatur lama siklus">Lama siklus</button>
+      </div>
+      <div class="day-main">
+        <div class="day-num"><span id="day-num">1</span><small>/ <span id="day-total">7</span> hari</small></div>
+        <div>
+          <p class="eta" id="cycle-eta"></p>
+          <p class="sub">Jam ESP32: <b class="mono" id="live-footer-clock">--.--.--</b></p>
+          <p class="sub">Jam perangkat: <b class="mono" id="live-header-clock">--.--.--</b></p>
+        </div>
+      </div>
+      <div class="pips" id="pips"></div>
+      <div class="bar"><div class="bar-fill emerald" id="cycle-bar"></div></div>
+      <button class="btn small" id="day-set" type="button">Atur hari ke-</button>
+    </article>
+
+    <!-- MQTT -->
+    <article class="card mqtt-card">
+      <div class="card-h">
+        <div class="card-t"><span class="dot cyan"></span>Koneksi MQTT</div>
+        <span class="tag idle" id="mq-tag">—</span>
+      </div>
+      <div class="mq-body">
+        <div class="sig" id="sig" aria-hidden="true">
+          <svg viewBox="0 0 64 64">
+            <circle class="s0" cx="32" cy="44" r="4"/>
+            <path class="s1" d="M22 36a14 14 0 0 1 20 0"/>
+            <path class="s2" d="M15 29a24 24 0 0 1 34 0"/>
+            <path class="s3" d="M8 22a34 34 0 0 1 48 0"/>
+          </svg>
+        </div>
+        <ul class="mq-list">
+          <li><span>Broker</span><b id="mq-broker">—</b></li>
+          <li><span>ESP32</span><b id="mq-esp">—</b></li>
+          <li><span>Pesan masuk</span><b id="mq-count" class="mono">0</b></li>
+          <li><span>Terakhir</span><b id="mq-last">—</b></li>
+        </ul>
+      </div>
+      <p class="sub mono trunc" id="mq-host"></p>
+    </article>
+
+  </div>
 </section>
-<!-- END: SectionSlave1 -->
 
-<!-- BEGIN: SectionSlave2 -->
-<section class="space-y-2.5" data-purpose="slave-2-sensor-section">
-<div class="flex items-center justify-between px-1">
-<div class="flex items-center space-x-2">
-<div class="w-2 h-2 rounded-sm bg-emerald-400 shadow-[0_0_8px_#34d399]"></div>
-<h2 class="text-xs font-bold text-slate-200 tracking-wide uppercase">SLAVE 2</h2>
-</div>
-<span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-950/80 text-emerald-300 border border-emerald-800/60" id="badge-s2">Menunggu</span>
-</div>
-<div class="grid grid-cols-2 gap-2.5">
-<!-- Card 1: Suhu & Kelembaban Ruang -->
-<article class="glass-card p-3 lg:p-4 rounded-2xl border border-emerald-500/20 relative overflow-hidden group hover:border-emerald-500/40 transition-all" data-purpose="ambient-storage-card">
-<div class="flex items-center justify-between mb-1">
-<span class="text-[10px] font-medium tracking-wide uppercase text-slate-400">Suhu Ruang</span>
-<div class="w-6 h-6 rounded-lg bg-emerald-950/90 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-<path d="M12 9a4 4 0 0 0-2 7.5"></path>
-<path d="M12 3v2"></path>
-<path d="M6.6 6.6l1.4 1.4"></path>
-<path d="M20 12h-2"></path>
-<path d="M6.6 17.4l1.4-1.4"></path>
-</svg>
-</div>
-</div>
-<div class="flex items-baseline space-x-1">
-<span class="text-2xl lg:text-3xl font-extrabold text-white tracking-tight" id="v-suhu2">—</span>
-<span class="text-xs font-semibold text-emerald-400" id="u-suhu2"></span>
-</div>
-<div class="mt-2.5 pt-2 border-t border-slate-800 flex items-center justify-between">
-<span class="text-[10px] text-slate-400">Kelembaban</span>
-<span class="text-xs font-bold text-emerald-300 font-mono"><span id="v-hum">—</span><span id="u-hum"></span></span>
-</div>
-<div class="w-full bg-slate-800/80 rounded-full h-1 mt-1.5 overflow-hidden">
-<div id="hum-bar" style="width:0%" class="bg-emerald-400 h-1 rounded-full transition-all duration-500 shadow-[0_0_6px_#34d399]"></div>
-</div>
-</article>
-<!-- Card 2: Status Lampu -->
-<article class="glass-card p-3 lg:p-4 rounded-2xl border border-amber-500/20 relative overflow-hidden group hover:border-amber-500/40 transition-all flex flex-col justify-between" data-purpose="heater-status-card">
-<div>
-<div class="flex items-center justify-between mb-1">
-<span class="text-[10px] font-medium tracking-wide uppercase text-slate-400">Status Lampu</span>
-<div class="w-6 h-6 rounded-lg bg-amber-950/80 border border-amber-500/30 flex items-center justify-center text-amber-400">
-<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-<line x1="12" x2="12" y1="1" y2="3"></line>
-<line x1="12" x2="12" y1="21" y2="23"></line>
-<line x1="4.22" x2="5.64" y1="4.22" y2="5.64"></line>
-<line x1="18.36" x2="19.78" y1="18.36" y2="19.78"></line>
-<line x1="1" x2="3" y1="12" y2="12"></line>
-<line x1="21" x2="23" y1="12" y2="12"></line>
-<circle cx="12" cy="12" r="5"></circle>
-</svg>
-</div>
-</div>
-<div class="flex items-center space-x-2 mt-1">
-<span class="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-glow-amber animate-pulse" id="heater-bulb-indicator"></span>
-<span class="text-lg lg:text-xl font-black tracking-tight text-amber-300" id="heater-status-text">—</span>
-</div>
-</div>
-<div class="mt-3 pt-1 text-[9px] text-slate-400 flex items-center justify-between">
-<span class="text-slate-500 truncate" id="heater-note">menunggu data</span>
-</div>
-</article>
-</div>
-</section>
-<!-- END: SectionSlave2 -->
+<!-- ================= HALAMAN GRAFIK & DATA ================= -->
+<section class="page" id="page-grafik">
+  <div class="stack">
+    <article class="card">
+      <div class="card-h">
+        <div class="card-t"><span class="dot amber"></span>Grafik Harian</div>
+        <span class="sub" id="sesi-info">Disimpan 3× sehari</span>
+      </div>
+      <div class="seg" id="chart-tabs" data-noswipe role="tablist"></div>
+      <div class="chart-box">
+        <canvas id="chart"></canvas>
+        <div class="chart-empty" id="chart-empty">Belum ada data tersimpan. Data pertama akan tersimpan otomatis saat sensor mengirim data pada sesi yang sedang berjalan.</div>
+      </div>
+      <p class="sub">Sesi hari ini:</p>
+      <div class="sesi-row" id="sesi-row"></div>
+    </article>
 
-<section class="space-y-2.5 lg:col-span-2" id="sec-extra" style="display:none">
-<h3 class="px-1 text-xs font-bold text-slate-200 tracking-wide uppercase">Data lain</h3>
-<div class="grid grid-cols-2 lg:grid-cols-4 gap-2.5" id="extra-grid"></div>
+    <article class="card">
+      <div class="card-h">
+        <div class="card-t"><span class="dot emerald"></span>Data Tersimpan</div>
+        <span class="tag idle" id="hist-count">0 data</span>
+      </div>
+      <div class="actions">
+        <button class="btn primary" id="dl-csv" type="button">
+          <svg viewBox="0 0 24 24"><path d="M12 3v12m0 0l-5-5m5 5l5-5M4 19h16"/></svg>Download CSV (Excel)
+        </button>
+        <button class="btn" id="dl-png" type="button">
+          <svg viewBox="0 0 24 24"><path d="M12 3v12m0 0l-5-5m5 5l5-5M4 19h16"/></svg>Download Grafik (PNG)
+        </button>
+        <button class="btn danger" id="btn-reset" type="button">
+          <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5"/></svg>Reset Hari &amp; Data
+        </button>
+      </div>
+      <div class="table-wrap" data-noswipe>
+        <table>
+          <thead><tr><th>Waktu</th><th>Hari</th><th>Sesi</th><th>Garam</th><th>Suhu air</th><th>Air</th><th>RH dalam</th><th>RH luar</th><th>Suhu ruang</th><th>Lampu</th></tr></thead>
+          <tbody id="hist-body"></tbody>
+        </table>
+      </div>
+      <p class="sub">Data disimpan di browser perangkat ini dan terus digabung dari hari ke hari sampai ditekan Reset. Data hanya tercatat selama halaman ini terbuka.</p>
+    </article>
+  </div>
 </section>
 
-<section class="space-y-2">
-<h3 class="px-1 text-xs font-bold text-slate-200 tracking-wide uppercase">Serial Monitor</h3>
-<div class="glass-panel p-3 lg:p-4 rounded-2xl border border-slate-800 font-mono text-[10px] lg:text-xs space-y-1.5">
-<div class="flex gap-2"><span class="text-cyan-400 w-12 shrink-0">Slave 1</span><span id="raw-1" class="break-all text-slate-400">—</span></div>
-<div class="flex gap-2"><span class="text-emerald-400 w-12 shrink-0">Slave 2</span><span id="raw-2" class="break-all text-slate-400">—</span></div>
-</div>
+<!-- ================= HALAMAN PERANGKAT ================= -->
+<section class="page" id="page-perangkat">
+  <div class="stack">
+    <div class="dev-grid" id="dev-list"></div>
+
+    <article class="card">
+      <div class="card-h"><div class="card-t"><span class="dot amber"></span>Topik MQTT</div></div>
+      <ul class="topic-list">
+        <li><code>telur/slave/1</code><span>Data sensor Slave 1 (kotak pengasinan)</span></li>
+        <li><code>telur/slave/2</code><span>Data sensor Slave 2 (luar kotak &amp; lampu)</span></li>
+        <li><code>telur/slave/led</code><span>Umpan balik kondisi lampu (ON / OFF)</span></li>
+        <li><code>telur/slave/status</code><span>Status ESP32: online / offline</span></li>
+        <li><code>telur/slave/time</code><span>Jam ESP32, format HH:MM:SS</span></li>
+        <li><code>telur/slave/siklus</code><span>Hari siklus dari ESP32, format <i>HARI:3 TARGET:7</i></span></li>
+        <li><code>telur/control/heater</code><span>Perintah dari dashboard ke ESP32: <i>ON</i> / <i>OFF</i></span></li>
+      </ul>
+    </article>
+
+    <article class="card">
+      <div class="card-h"><div class="card-t"><span class="dot cyan"></span>Serial Monitor</div></div>
+      <div class="serial mono">
+        <div><span class="c-cyan">Slave 1</span><span id="raw-1">—</span></div>
+        <div><span class="c-emerald">Slave 2</span><span id="raw-2">—</span></div>
+      </div>
+    </article>
+  </div>
 </section>
 
-<!-- BEGIN: ControlPanel -->
-<section class="space-y-2" data-purpose="control-panel-section">
-<div class="flex items-center justify-between px-1">
-<div class="flex items-center space-x-1.5">
-<svg class="w-3.5 h-3.5 text-amber-400" fill="currentColor" viewBox="0 0 24 24">
-<path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"></path>
-</svg>
-<h3 class="text-xs font-bold text-slate-200 uppercase tracking-wide">Kontrol Lampu</h3>
-</div>
-</div>
-<div class="glass-panel p-3.5 lg:p-4 rounded-2xl border border-slate-700/60 flex items-center justify-between shadow-lg">
-<div class="flex items-center space-x-3">
-<div class="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-300 transition-colors" id="switch-icon-bg">
-<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-<path d="M13 10V3L4 14h7v7l9-11h-7z" stroke-linecap="round" stroke-linejoin="round"></path>
-</svg>
-</div>
-<div>
-<p class="text-xs font-bold text-white">Lampu</p>
-<p class="text-[11px] text-amber-400 font-medium" id="switch-subtitle">Kondisi: —</p>
-</div>
-</div>
-<button aria-pressed="true" class="relative inline-flex h-8 w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-300 ease-in-out focus:outline-none bg-gradient-to-r from-amber-500 to-orange-500 shadow-glow-amber" id="toggle-heater-btn" type="button">
-<span class="sr-only">Toggle Status</span>
-<span class="pointer-events-none inline-block h-7 w-7 transform rounded-full bg-slate-900 shadow-lg ring-0 transition duration-300 ease-in-out translate-x-6 flex items-center justify-center" id="toggle-circle">
-<span class="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_6px_#f59e0b]"></span>
-</span>
-</button>
-</div>
-</section>
-<!-- END: ControlPanel -->
-
-<!-- BEGIN: CycleAndClockFooter -->
-<section class="glass-panel p-3 lg:p-4 rounded-2xl border border-slate-800 flex items-center justify-between text-xs lg:col-span-2" data-purpose="cycle-day-card">
-<div class="flex items-center space-x-2.5">
-<div class="px-2.5 py-1 rounded-lg bg-amber-950/80 border border-amber-500/40 text-amber-300 font-mono font-bold tracking-wider text-[11px] shadow-sm" id="day-badge" title="Ketuk untuk mengatur hari" style="cursor:pointer">DAY - 1</div>
-<div>
-<p class="font-semibold text-slate-200 text-[11px]" id="cycle-text" style="cursor:pointer" title="Ketuk untuk mengatur lama siklus">Siklus Pengasinan</p>
-<p class="text-[9px] text-emerald-400 font-medium" id="cycle-eta"></p>
-</div>
-</div>
-<div class="text-right">
-<span class="text-[10px] text-slate-400 block">Waktu</span>
-<span class="font-mono text-[11px] text-emerald-400 font-medium flex items-center justify-end space-x-1">
-<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block animate-ping"></span>
-<span id="live-footer-clock">--.--.--</span>
-</span>
-</div>
-</section>
-<!-- END: CycleAndClockFooter -->
-
+</div></div>
 </main>
-<!-- END: MainContent -->
-</div>
-<!-- END: MobileDeviceFrame -->
 
-<!-- JavaScript utama (harus dimuat setelah Paho MQTT) -->
+<!-- Navigasi bawah: pilih halaman (HP & desktop) -->
+<nav class="bottomnav" id="bottomnav" aria-label="Halaman">
+  <span class="bn-glider" id="bn-glider"></span>
+  <button class="bn is-active" data-page="dashboard" type="button">
+    <svg viewBox="0 0 24 24"><path d="M3 12l9-8 9 8M5 10v10h14V10"/></svg><span>Dashboard</span>
+  </button>
+  <button class="bn" data-page="grafik" type="button">
+    <svg viewBox="0 0 24 24"><path d="M4 19h16M6 16l4-5 4 3 5-7"/></svg><span>Grafik &amp; Data</span>
+  </button>
+  <button class="bn" data-page="perangkat" type="button">
+    <svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/></svg><span>Perangkat</span>
+  </button>
+</nav>
+<div class="slide-dots" id="slide-dots" aria-hidden="true"><i class="is-active"></i><i></i><i></i></div>
+
+<!-- Peringatan hari ke-7 -->
+<div id="day7-overlay" class="overlay" role="alertdialog" aria-modal="true" aria-labelledby="day7-title" aria-hidden="true">
+  <div class="modal amber">
+    <div class="m-icon"><span class="ring-a"></span><span class="ring-a d2"></span>
+      <div class="m-ic shake"><svg viewBox="0 0 24 24"><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0zM12 9v4M12 17h.01"/></svg></div>
+    </div>
+    <p class="m-kicker mono" id="day7-kicker">DAY - 7</p>
+    <h2 id="day7-title">Peringatan Hari ke-7</h2>
+    <p class="m-desc" id="day7-desc">Siklus pengasinan telur sudah mencapai hari ke-7. Segera periksa kondisi telur dan kepekatan larutan garam.</p>
+    <button class="m-btn" id="day7-close" type="button">Close</button>
+  </div>
+</div>
+
+<!-- Peringatan air rendah -->
+<div id="lvl-overlay" class="overlay" role="alertdialog" aria-modal="true" aria-labelledby="lvl-title" aria-hidden="true">
+  <div class="modal rose">
+    <div class="m-icon"><span class="ring-a"></span><span class="ring-a d2"></span>
+      <div class="m-ic drop"><svg viewBox="0 0 24 24"><path d="M12 2.7l5.7 5.7a8 8 0 1 1-11.4 0z"/></svg></div>
+    </div>
+    <p class="m-kicker mono">KETINGGIAN AIR RENDAH</p>
+    <h2 id="lvl-title">Air Hampir Habis</h2>
+    <p class="m-desc">Ketinggian larutan garam sudah rendah. Segera tambahkan air agar telur tetap terendam.</p>
+    <p class="m-now">Saat ini: <b class="mono" id="lvl-now">—</b></p>
+    <button class="m-btn" id="lvl-close" type="button">Close</button>
+  </div>
+</div>
+
+<!-- Konfirmasi reset -->
+<div id="reset-overlay" class="overlay" role="dialog" aria-modal="true" aria-labelledby="reset-title" aria-hidden="true">
+  <div class="modal rose calm">
+    <h2 id="reset-title">Reset hari &amp; semua data?</h2>
+    <p class="m-desc">Hari kembali ke <b>DAY - 1</b> mulai hari ini, dan semua data grafik yang tersimpan akan dihapus. Download CSV dulu jika data masih diperlukan.</p>
+    <p class="m-now">Catatan: jika ESP32 mengirim nomor hari sendiri (topik <i>siklus</i>), hari akan mengikuti ESP32.</p>
+    <div class="m-row">
+      <button class="btn" id="reset-cancel" type="button">Batal</button>
+      <button class="btn danger solid" id="reset-ok" type="button">Ya, reset</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
 <script src="app.js"></script>
-
-<!-- BEGIN: Peringatan Day 7 (menutupi layar, hanya bisa ditutup dengan tombol Close) -->
-<div id="day7-overlay" class="fixed inset-0 z-[100] items-center justify-center p-5 bg-black/75 backdrop-blur-sm" role="alertdialog" aria-modal="true" aria-labelledby="day7-title" aria-describedby="day7-desc" aria-hidden="true">
-<div id="day7-card" class="relative w-full max-w-sm rounded-3xl border border-amber-500/50 bg-[#0d1426] p-6 text-center">
-<div class="relative mx-auto mb-4 flex h-20 w-20 items-center justify-center">
-<span class="d7-ring absolute inset-0 rounded-full bg-amber-500/40"></span>
-<span class="d7-ring absolute inset-0 rounded-full bg-amber-500/40" style="animation-delay:.9s"></span>
-<div class="d7-icon relative flex h-20 w-20 items-center justify-center rounded-full border border-amber-400/60 bg-amber-950/90 text-amber-300">
-<svg class="h-10 w-10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
-<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-<line x1="12" x2="12" y1="9" y2="13"></line>
-<line x1="12" x2="12.01" y1="17" y2="17"></line>
-</svg>
-</div>
-</div>
-<p class="font-mono text-xs font-bold tracking-widest text-amber-400">DAY - 7</p>
-<h2 id="day7-title" class="mt-1 text-xl font-extrabold text-white">Peringatan Hari ke-7</h2>
-<p id="day7-desc" class="mt-2 text-sm leading-relaxed text-slate-300">Siklus pengasinan telur sudah mencapai hari ke-7. Segera periksa kondisi telur dan kepekatan larutan garam.</p>
-<button id="day7-close" type="button" class="mt-5 w-full rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 py-2.5 text-sm font-bold text-slate-900 transition active:scale-95 focus:outline-none focus:ring-2 focus:ring-amber-300">Close</button>
-</div>
-</div>
-<!-- END: Peringatan Day 7 -->
-
-<!-- BEGIN: Peringatan ketinggian air rendah (hanya bisa ditutup dengan tombol Close) -->
-<div id="lvl-overlay" class="fixed inset-0 z-[100] items-center justify-center p-5 bg-black/75 backdrop-blur-sm" role="alertdialog" aria-modal="true" aria-labelledby="lvl-title" aria-describedby="lvl-desc" aria-hidden="true">
-<div id="lvl-card" class="relative w-full max-w-sm rounded-3xl border border-rose-500/50 bg-[#0d1426] p-6 text-center">
-<div class="relative mx-auto mb-4 flex h-20 w-20 items-center justify-center">
-<span class="d7-ring absolute inset-0 rounded-full bg-rose-500/40"></span>
-<span class="d7-ring absolute inset-0 rounded-full bg-rose-500/40" style="animation-delay:.9s"></span>
-<div class="relative flex h-20 w-20 items-center justify-center rounded-full border border-rose-400/60 bg-rose-950/90 text-rose-300">
-<svg class="lv-icon h-10 w-10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
-<path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
-</svg>
-</div>
-</div>
-<p class="font-mono text-xs font-bold tracking-widest text-rose-400">KETINGGIAN AIR RENDAH</p>
-<h2 id="lvl-title" class="mt-1 text-xl font-extrabold text-white">Air Hampir Habis</h2>
-<p id="lvl-desc" class="mt-2 text-sm leading-relaxed text-slate-300">Ketinggian larutan garam sudah rendah. Segera tambahkan air agar telur tetap terendam.</p>
-<p class="mt-3 text-xs text-slate-400">Saat ini: <span id="lvl-now" class="font-mono font-bold text-rose-300">—</span></p>
-<button id="lvl-close" type="button" class="mt-5 w-full rounded-xl bg-gradient-to-r from-rose-500 to-orange-500 py-2.5 text-sm font-bold text-slate-900 transition active:scale-95 focus:outline-none focus:ring-2 focus:ring-rose-300">Close</button>
-</div>
-</div>
-<!-- END: Peringatan ketinggian air rendah -->
-
-<script>
-(function () {
-  var TARGET_DAY = 7;                    // ubah angka ini jika ingin hari lain
-  var KEY = 'day7-alert-closed';
-  var overlay = document.getElementById('day7-overlay');
-  var closeBtn = document.getElementById('day7-close');
-  var badge = document.getElementById('day-badge');
-  if (!overlay || !closeBtn || !badge) return;
-
-  function getDay() {
-    var m = (badge.textContent || '').match(/\d+/);
-    return m ? parseInt(m[0], 10) : null;
-  }
-  function isOpen() { return overlay.classList.contains('is-open'); }
-  function wasClosed() { try { return sessionStorage.getItem(KEY) === '1'; } catch (e) { return false; } }
-
-  function openAlert() {
-    if (isOpen()) return;
-    overlay.classList.add('is-open');
-    overlay.setAttribute('aria-hidden', 'false');
-    document.body.style.overflow = 'hidden';
-    try { if (navigator.vibrate) navigator.vibrate([200, 100, 200]); } catch (e) {}
-    closeBtn.focus();
-  }
-  function closeAlert() {
-    overlay.classList.remove('is-open');
-    overlay.setAttribute('aria-hidden', 'true');
-    document.body.style.overflow = '';
-    try { sessionStorage.setItem(KEY, '1'); } catch (e) {}
-  }
-  function check() {
-    var d = getDay();
-    if (d !== TARGET_DAY) {
-      try { sessionStorage.removeItem(KEY); } catch (e) {}
-      return;
-    }
-    if (!wasClosed()) openAlert();
-  }
-
-  closeBtn.addEventListener('click', closeAlert);
-  // Hanya tombol Close yang boleh menutup: blokir Esc dan Tab keluar dari dialog
-  document.addEventListener('keydown', function (e) {
-    if (!isOpen()) return;
-    if (e.key === 'Escape' || e.key === 'Tab') e.preventDefault();
-  });
-
-  new MutationObserver(check).observe(badge, { childList: true, characterData: true, subtree: true });
-  window.addEventListener('load', function () { setTimeout(check, 300); });
-
-  window.showDay7Alert = openAlert;      // untuk uji coba lewat Console
-})();
-</script>
-
-<script>
-(function () {
-  var LOW_PERCENT = 20;     // peringatan muncul jika isi gauge di bawah angka ini (%)
-  var RESET_PERCENT = 25;   // peringatan baru bisa muncul lagi setelah level naik ke atas angka ini (%)
-
-  var overlay = document.getElementById('lvl-overlay');
-  var closeBtn = document.getElementById('lvl-close');
-  var nowEl = document.getElementById('lvl-now');
-  var fill = document.getElementById('gauge-fill');
-  var vLevel = document.getElementById('v-level');
-  var uLevel = document.getElementById('u-level');
-  if (!overlay || !closeBtn || !fill || !vLevel) return;
-
-  var armed = true;
-
-  function getPercent() {
-    var h = parseFloat(fill.style.height);
-    return isNaN(h) ? null : h;
-  }
-  function hasData() { return /\d/.test(vLevel.textContent || ''); }
-  function isOpen() { return overlay.classList.contains('is-open'); }
-  function day7Open() {
-    var d = document.getElementById('day7-overlay');
-    return !!(d && d.classList.contains('is-open'));
-  }
-  function updateText() {
-    var p = getPercent();
-    var txt = (vLevel.textContent || '').trim() + ' ' + (uLevel ? (uLevel.textContent || '').trim() : '');
-    if (p !== null) txt += ' (' + Math.round(p) + '%)';
-    nowEl.textContent = txt.trim() || '—';
-  }
-
-  function openAlert() {
-    if (isOpen()) return;
-    updateText();
-    overlay.classList.add('is-open');
-    overlay.setAttribute('aria-hidden', 'false');
-    document.body.style.overflow = 'hidden';
-    try { if (navigator.vibrate) navigator.vibrate([300, 150, 300]); } catch (e) {}
-    closeBtn.focus();
-  }
-  function closeAlert() {
-    overlay.classList.remove('is-open');
-    overlay.setAttribute('aria-hidden', 'true');
-    if (!day7Open()) document.body.style.overflow = '';
-    armed = false;   // tidak muncul lagi sampai level naik melewati RESET_PERCENT
-  }
-  function check() {
-    if (!hasData()) return;            // tunggu data asli dari perangkat
-    var p = getPercent();
-    if (p === null) return;
-    if (p >= RESET_PERCENT) armed = true;
-    if (isOpen()) { updateText(); return; }
-    if (p < LOW_PERCENT && armed && !day7Open()) openAlert();
-  }
-
-  closeBtn.addEventListener('click', closeAlert);
-  document.addEventListener('keydown', function (e) {
-    if (!isOpen()) return;
-    if (e.key === 'Escape' || e.key === 'Tab') e.preventDefault();
-  });
-
-  new MutationObserver(check).observe(fill, { attributes: true, attributeFilter: ['style'] });
-  new MutationObserver(check).observe(vLevel, { childList: true, characterData: true, subtree: true });
-
-  // Jika peringatan Day 7 sedang tampil, tunggu sampai ditutup baru cek lagi
-  var d7Close = document.getElementById('day7-close');
-  if (d7Close) d7Close.addEventListener('click', function () { setTimeout(check, 150); });
-
-  window.addEventListener('load', function () { setTimeout(check, 500); });
-  window.showLevelAlert = openAlert;     // untuk uji coba lewat Console
-})();
-</script>
 </body>
 </html>
