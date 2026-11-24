@@ -1156,6 +1156,8 @@ button.stat[data-focus="lamp"].is-focus { border-color: #fde68a; box-shadow: 0 0
     user: 'Telur-asin', pass: 'TELURASIN12345',
     sub: 'telur/slave/+',               // data slave 1, 2, led, time, status, siklus
     cmd: 'telur/control/heater',        // perintah ON / OFF ke ESP32
+    sbUrl: 'https://tiqzgpyfvtcftdobtpge.supabase.co',
+    sbKey: 'sb_publishable_jYCxvxrzqKzbZ8VCR16BRQ_Xu3aVHX8',
     cycleDays: 7,                       // lama siklus (hari), bisa diubah dengan mengetuk "Lama siklus"
     alertDay: 7,                        // hari munculnya peringatan (sama seperti program sebelumnya)
     levelLow: 20,                       // peringatan air rendah jika di bawah angka ini (%)
@@ -1888,6 +1890,12 @@ button.stat[data-focus="lamp"].is-focus { border-color: #fde68a; box-shadow: 0 0
       localStorage.setItem('cycleStart', new Date().toDateString());
       sessionStorage.removeItem(DAY_KEY);
     } catch (e) {}
+    if (CFG.sbUrl && CFG.sbKey && CFG.sbKey.indexOf('TEMPEL_') === -1) {
+      fetch(CFG.sbUrl + '/rest/v1/mqtt_messages?id=gt.0', {
+        method: 'DELETE',
+        headers: { 'apikey': CFG.sbKey }
+      }).catch(function () {});
+    }
     S.espDay = null; lowArmed = true;
     var p = levelPct(); if (p !== null) save('telur-level-base', Math.round(p * 10) / 10);
     closeOv('reset-overlay');
@@ -2059,7 +2067,76 @@ button.stat[data-focus="lamp"].is-focus { border-color: #fde68a; box-shadow: 0 0
       if (el.classList.contains('stat') && window.innerWidth < 720) $('scene').scrollIntoView({ behavior: 'smooth', block: 'center' });
     });
   });
+   /* ============ SINKRONISASI SUPABASE ============ */
+  function syncFromSupabase() {
+    if (!CFG.sbUrl || !CFG.sbKey || CFG.sbKey.indexOf('TEMPEL_') !== -1) return;
 
+    fetch(CFG.sbUrl + '/rest/v1/mqtt_messages?select=topic,payload,tanggal_sesi,sesi,created_at&order=created_at.asc&limit=1000', {
+      headers: { 'apikey': CFG.sbKey }
+    })
+    .then(function (res) { return res.ok ? res.json() : []; })
+    .then(function (rows) {
+      if (!rows || !rows.length) return;
+
+      var map = {};
+      var sesiIdx = { 'Pagi': 0, 'Siang': 1, 'Malam': 2 };
+      var startStr = load('cycleStart', null) || new Date().toDateString();
+      var startDay = new Date(startStr);
+
+      rows.forEach(function (row) {
+        var idx = sesiIdx[row.sesi] !== undefined ? sesiIdx[row.sesi] : 0;
+        var key = row.tanggal_sesi + '#' + idx;
+        if (!map[key]) {
+          var rowDate = new Date(row.tanggal_sesi + 'T00:00:00');
+          var calcDay = Math.max(1, Math.floor((rowDate - startDay) / 864e5) + 1);
+          map[key] = {
+            key: key, t: row.created_at, date: row.tanggal_sesi, sesi: row.sesi, day: calcDay,
+            garam: null, suhuAir: null, level: null, humIn: null, humOut: null, suhuRuang: null,
+            garamUnit: CFG.tds.unit, lampu: null
+          };
+        }
+        var rec = map[key];
+        var tail = row.topic.split('/').pop();
+
+        if (tail === 'led') {
+          rec.lampu = isOn(row.payload) ? 1 : 0;
+        } else if (tail === 'siklus') {
+          var mm = row.payload.match(/HARI:(\d+)/i);
+          if (mm) rec.day = parseInt(mm[1], 10);
+        } else if (tail === '1' || tail === '2') {
+          var used = {};
+          parsePairs(row.payload).forEach(function (kv, i) {
+            if (/^(hari|day)$/i.test(kv[0])) {
+              var dn = parseInt(kv[1], 10);
+              if (dn > 0) rec.day = dn;
+              return;
+            }
+            var id = pickSlot(+tail, kv[0], i, used);
+            if (!id) return;
+            used[id] = 1;
+            if (id === 'heater') rec.lampu = isOn(kv[1]) ? 1 : 0;
+            else {
+              var v = splitVal(kv[1]);
+              if (!isNaN(v.n)) rec[id] = v.n;
+              if (id === 'garam' && v.unit) rec.garamUnit = v.unit;
+            }
+          });
+        }
+      });
+
+      var merged = {};
+      history().forEach(function (r) { merged[r.key] = r; });
+      Object.keys(map).forEach(function (k) { merged[k] = map[k]; });
+
+      var finalArr = Object.keys(merged).sort().map(function (k) { return merged[k]; });
+      save(HKEY, finalArr);
+      renderHistory();
+    })
+    .catch(function (err) { console.warn('Gagal memuat riwayat Supabase:', err); });
+  }
+
+  
+   
   /* ============ MULAI ============ */
   buildScene(); buildTabs();
   cycle(); renderAll(); renderHistory();
