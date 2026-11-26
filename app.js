@@ -12,29 +12,22 @@
     sbUrl: 'https://tiqzgpyfvtcftdobtpge.supabase.co',
     sbKey: 'sb_publishable_jYCxvxrzqKzbZ8VCR16BRQ_Xu3aVHX8',
     cycleDays: 7,                       // lama siklus (hari), bisa diubah dengan mengetuk "Lama siklus"
-    alertDay: 7,                        // hari munculnya peringatan (sama seperti program sebelumnya)
+    alertDay: 7,                        // hari munculnya peringatan
     levelLow: 20,                       // peringatan air rendah jika di bawah angka ini (%)
     levelReset: 25,                     // peringatan bisa muncul lagi setelah level naik di atas angka ini (%)
-    // Sensor TDS (kepekatan garam). Sesuaikan dengan rentang sensor & hasil kalibrasi larutanmu.
-    tds: { max: 1000, rendah: 300, pekat: 700, unit: 'ppm' },   // max = ujung skala, rendah/pekat = batas zona
+    tds: { max: 1000, rendah: 300, pekat: 700, unit: 'ppm' },
     staleSec: 120,                      // slave dianggap "Terlambat" jika tidak ada data selama ini (detik)
-    // 8 sesi penyimpanan data per hari (setiap 3 jam sekali).
+    // 8 sesi penyimpanan data per hari (setiap 3 jam sekali dari server EMQX -> Supabase)
     sesi: [
       { name: '00.00', from: 0 },  { name: '03.00', from: 3 },
       { name: '06.00', from: 6 },  { name: '09.00', from: 9 },
       { name: '12.00', from: 12 }, { name: '15.00', from: 15 },
       { name: '18.00', from: 18 }, { name: '21.00', from: 21 }
     ],
-    suhu: { dingin: 20, hangat: 32, panas: 40 },    // batas status suhu air (°C)
-    lembab: { kering: 40, basah: 80 }               // batas status kelembaban (%)
+    suhu: { dingin: 20, hangat: 32, panas: 40 },
+    lembab: { kering: 40, basah: 80 }
   };
 
-  /* Pencocokan nama data dari ESP32 ke indikator (lewat kata kunci).
-     - Kata "dalam / in / kotak / box"  -> kelembaban DALAM kotak
-     - Kata "luar / out / ruang / room" -> kelembaban LUAR kotak
-     - Tanpa keterangan: kelembaban dari Slave 1 = dalam kotak, dari Slave 2 = luar kotak
-     - "suhu" dari Slave 1 = suhu air, dari Slave 2 = suhu ruang
-     Kalau slave hanya mengirim angka tanpa nama, dipakai urutan ORDER. */
   var RE = {
     hum: /lembab|hum|\brh/i, temp: /suhu|temp/i, garam: /garam|salin|salt|tds|kadar/i,
     level: /tinggi|level|jarak|volume|water/i, lampu: /heater|pemanas|relay|lampu|led/i,
@@ -64,7 +57,6 @@
   };
   var FIELDS = ['garam', 'suhuAir', 'level', 'humIn', 'humOut', 'suhuRuang'];
 
-  /* Isi halaman "Perangkat". Ubah teks di sini sesuai alat yang dipakai. */
   var DEVICES = [
     { n: 1, color: 'cyan', name: 'Slave 1', role: 'Unit Kotak Pengasinan',
       place: 'Dipasang di dalam / pada kotak rendaman telur. Membaca kondisi larutan garam.',
@@ -126,7 +118,7 @@
     clearTimeout(toastT); toastT = setTimeout(function () { el.classList.remove('show'); }, 2600);
   }
 
-  /* ============ PARSER TEKS ESP32 (sama seperti sebelumnya) ============ */
+  /* ============ PARSER TEKS ESP32 ============ */
   function parsePairs(raw) {
     var out = []; raw = raw.trim();
     if (raw.charAt(0) === '{') {
@@ -169,13 +161,13 @@
     var L = S.vals.level; if (!L || isNaN(L.n)) return null;
     return L.unit === '%' ? clamp(L.n, 0, 100) : null;
   }
-  function estLevel() {   // estimasi tinggi air dari hari berjalan (dipakai sebelum ada data sensor)
+  function estLevel() {
     var p = clamp((S.day - 1) / Math.max(S.totalDays, 1), 0, 1);
     return Math.round(100 - p * 45);
   }
 
   /* =====================================================================
-     ELEMEN ANIMASI (dibuat sekali)
+     ELEMEN ANIMASI
      ===================================================================== */
   function rnd(a, b) { return a + Math.random() * (b - a); }
   function buildScene() {
@@ -217,7 +209,6 @@
       c.style.cssText = 'left:' + rnd(10, 60) + '%;--d:' + rnd(2.2, 3.4).toFixed(2) + 's;--dl:' + rnd(0, 3.4).toFixed(2) + 's';
       sh.appendChild(c);
     }
-    // penggaris sensor ketinggian air di dalam kotak
     var ru = $('ruler'), h = '';
     for (var v = 0; v <= 100; v += 10) h += '<i class="' + (v % 50 === 0 ? 'major' : '') + '" style="bottom:' + v + '%">' + (v % 50 === 0 ? '<b>' + v + '</b>' : '') + '</i>';
     h += '<i class="low" style="bottom:' + CFG.levelLow + '%"><b>' + CFG.levelLow + '</b></i>';
@@ -269,7 +260,6 @@
     tank.classList.toggle('low', w < CFG.levelLow);
 
     var t = num('suhuAir');
-    // air tetap biru; makin panas makin kuat semburat oranye
     scene.style.setProperty('--wh', t === null ? 200 : (205 - clamp((t - 15) / 20, 0, 1) * 25).toFixed(0));
     scene.style.setProperty('--warm', t === null ? 0 : clamp((t - 30) / 12, 0, .7).toFixed(2));
     scene.style.setProperty('--bd', (t === null ? 5 : 6.5 - clamp((t - 20) / 20, 0, 1) * 4.5).toFixed(2) + 's');
@@ -279,11 +269,10 @@
     $('tank-temp').textContent = t === null ? '—°C' : fmtNum(t) + '°C';
 
     var g = num('garam');
-    // garam: makin pekat makin banyak butiran & air makin keruh
     var gp = tdsPct(g), nSpeck = Math.round((g === null ? .25 : Math.max(.08, gp)) * 44);
     Array.prototype.forEach.call($('salt').children, function (el, i) { el.style.display = i < nSpeck ? '' : 'none'; });
     scene.style.setProperty('--milk', g === null ? 0 : (gp * .9).toFixed(2));
-    var dry = w < 30;   // ujung probe TDS di 30% dari dasar
+    var dry = w < 30;
     $('tds-probe').classList.toggle('dry', dry);
     $('tds-chip').classList.toggle('dry', dry);
     $('tank-tds').textContent = dry ? 'kering' : (S.vals.garam ? S.vals.garam.num : '—');
@@ -295,7 +284,6 @@
     $('drops').style.opacity = h === null ? .2 : clamp((h - 30) / 70, .05, 1).toFixed(2);
     $('tank-hum').textContent = h === null ? '—' : Math.round(h) + '%';
 
-    // warna telur makin gelap seiring hari (proses pengasinan)
     var p = clamp((S.day - 1) / Math.max(S.totalDays - 1, 1), 0, 1);
     var c0 = [233, 243, 239], c1 = [176, 205, 192];
     scene.style.setProperty('--egg', 'rgb(' + c0.map(function (v, i) { return Math.round(v + (c1[i] - v) * p); }).join(',') + ')');
@@ -307,7 +295,6 @@
     $('st-level').textContent = S.vals.level ? txt('level') : '≈ ' + w + '%';
     $('st-lampu').textContent = S.heater === null ? '—' : S.heater ? 'MENYALA' : 'MATI';
 
-    // label di atas tampilan 3D
     $('hud-level').textContent = Math.round(w) + '%';
     $('hud-level-note').textContent = est ? 'estimasi' : 'sensor';
     $('hud-level-chip').classList.toggle('bad', w < CFG.levelLow);
@@ -316,7 +303,6 @@
     $('hud-hum').textContent = h === null ? '—' : Math.round(h) + '%';
     $('hud-temp').textContent = t === null ? '—' : fmtNum(t) + '°C';
 
-    // kirim kondisi terbaru ke tampilan 3D
     window.TELUR3D_STATE = {
       level: w, est: est, low: w < CFG.levelLow, lowLine: CFG.levelLow,
       temp: t, tempColor: tempColor(t), tdsPct: gp, tdsKnown: g !== null, dry: dry,
@@ -461,7 +447,7 @@
   }
 
   /* =====================================================================
-     DATA MASUK DARI SLAVE
+     DATA REALTIME MASUK DARI SLAVE (TIDAK DISIMPAN KE BROWSER)
      ===================================================================== */
   function setVal(id, key, val, n) {
     if (id === 'heater') { S.heater = isOn(val); S.heaterKey = key + ' (Slave ' + n + ')'; S.pending = 0; return; }
@@ -491,7 +477,6 @@
       if (id) { used[id] = 1; setVal(id, kv[0], kv[1], n); } else sl.extra[kv[0]] = kv[1];
     });
     renderAll();
-    maybeSample();
   }
 
   /* =====================================================================
@@ -503,12 +488,12 @@
     var msg = new Paho.MQTT.Message(on ? 'ON' : 'OFF');
     msg.destinationName = CFG.cmd; msg.qos = 1;
     try { client.send(msg); } catch (e) { toast('Gagal mengirim perintah'); return; }
-    S.heater = on; S.pending = Date.now();   // diperbarui lagi oleh respons slave (telur/slave/led)
+    S.heater = on; S.pending = Date.now();
     renderAll();
   });
 
   /* =====================================================================
-     JAM ESP32 & SIKLUS HARI (sama seperti program sebelumnya)
+     JAM ESP32 & SIKLUS HARI
      ===================================================================== */
   function setEspTime(t) {
     var m = t.match(/(\d+):(\d+):(\d+)/); if (!m) return;
@@ -551,7 +536,7 @@
   });
 
   /* =====================================================================
-     PERINGATAN (hari ke-7 & air rendah) — hanya bisa ditutup dengan tombol Close
+     PERINGATAN (hari ke-7 & air rendah)
      ===================================================================== */
   var DAY_KEY = 'day7-alert-closed', lowArmed = true;
   function isOpen(id) { return $(id).classList.contains('is-open'); }
@@ -583,7 +568,7 @@
     setTimeout(checkLevelAlert, 150);
   });
   function checkLevelAlert() {
-    var p = levelPct(); if (p === null) return;   // tunggu data asli dari sensor
+    var p = levelPct(); if (p === null) return;
     if (p >= CFG.levelReset) lowArmed = true;
     $('lvl-now').textContent = txt('level') + ' (' + Math.round(p) + '%)';
     if (isOpen('lvl-overlay')) return;
@@ -599,10 +584,13 @@
   });
 
   /* =====================================================================
-     RIWAYAT DATA — 8x sehari (tiap 3 jam), digabung terus dari hari ke hari
+     RIWAYAT DATA — 100% DARI CLOUD SUPABASE (SERAGAM DI SEMUA DEVICE)
      ===================================================================== */
-  var HKEY = 'telur-history';
-  var daySpan = load('telur-day-span', 7);   // default tampilkan 7 hari terakhir (0 = semua)
+  var cloudHistory = [];
+  // Hapus cache riwayat lokal lama di browser agar tidak bentrok dengan cloud
+  try { localStorage.removeItem('telur-history'); } catch (e) {}
+
+  var daySpan = load('telur-day-span', 7);
   var DAY_OPTS = [
     { v: 7, label: '7 Hari' },
     { v: 3, label: '3 Hari' },
@@ -611,7 +599,7 @@
     { v: 0, label: 'Semua Hari' }
   ];
 
-  function history() { return load(HKEY, []); }
+  function history() { return cloudHistory; }
   function filteredHistory() {
     var H = history();
     if (!daySpan || !H.length) return H;
@@ -623,25 +611,6 @@
     var h = d.getHours() + d.getMinutes() / 60, list = CFG.sesi, idx = 0;
     for (var i = 0; i < list.length; i++) if (h >= list[i].from) idx = i;
     return { idx: idx, name: list[idx].name, date: ymd(d), key: ymd(d) + '#' + idx, prev: false };
-  }
-  function fresh() {
-    var t = Math.max(S.slave[1].t, S.slave[2].t);
-    return t && Date.now() - t < 10 * 60e3 && FIELDS.some(function (f) { return num(f) !== null; });
-  }
-  function maybeSample(force) {
-    var s = sesiNow(), H = history();
-    if (!force && H.some(function (r) { return r.key === s.key; })) return;
-    if (!force && !fresh()) return;
-    var rec = { key: force ? s.key + '#m' + Date.now() : s.key, t: new Date().toISOString(), date: s.date, sesi: s.name,
-      day: S.day };
-    FIELDS.forEach(function (f) { rec[f] = num(f); });
-    rec.garamUnit = S.vals.garam ? S.vals.garam.unit : '';
-    rec.lampu = S.heater === null ? null : S.heater ? 1 : 0;
-    H.push(rec);
-    if (H.length > 3000) H = H.slice(-3000);
-    save(HKEY, H);
-    renderHistory();
-    toast('Data sesi ' + s.name + ' tersimpan');
   }
 
   function renderHistory() {
@@ -660,7 +629,7 @@
   }
   function renderSesi(H) {
     var now = sesiNow();
-    $('sesi-info').textContent = 'Disimpan setiap 3 jam (8× sehari)';
+    $('sesi-info').textContent = 'Disimpan otomatis ke Cloud setiap 3 jam (8× sehari)';
     $('sesi-row').innerHTML = CFG.sesi.map(function (s, i) {
       var rec = H.filter(function (r) { return r.key === now.date + '#' + i; })[0], cls = '', st;
       if (rec) { cls = 'done'; st = '✓ ' + hhmm(new Date(rec.t)); }
@@ -750,7 +719,7 @@
       return [ymd(d), hhmm(d).replace('.', ':'), r.day, r.sesi, cell(r.garam), cell(r.suhuAir), cell(r.level), cell(r.humIn), cell(r.humOut), cell(r.suhuRuang),
         r.lampu === null ? '' : r.lampu ? 'ON' : 'OFF'].map(function (v) { return String(v).replace('.', ','); }).join(';');
     }));
-    download('data-telur-asin_' + ymd(new Date()) + '.csv', new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' }));
+    download('data-telur-asin_' + ymd(new Date()) + '.csv', new Blob(['\uFEFF' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' }));
     toast('File CSV di-download');
   });
   $('dl-png').addEventListener('click', function () {
@@ -767,8 +736,9 @@
   $('reset-cancel').addEventListener('click', function () { closeOv('reset-overlay'); });
   $('reset-overlay').addEventListener('click', function (e) { if (e.target === this) closeOv('reset-overlay'); });
   $('reset-ok').addEventListener('click', function () {
+    cloudHistory = [];
     try {
-      localStorage.removeItem(HKEY);
+      localStorage.removeItem('telur-history');
       localStorage.removeItem('telur-level-base');
       localStorage.setItem('cycleStart', new Date().toDateString());
       sessionStorage.removeItem(DAY_KEY);
@@ -776,21 +746,22 @@
     if (CFG.sbUrl && CFG.sbKey && CFG.sbKey.indexOf('TEMPEL_') === -1) {
       fetch(CFG.sbUrl + '/rest/v1/mqtt_messages?id=gt.0', {
         method: 'DELETE',
-        headers: { 'apikey': CFG.sbKey }
+        headers: {
+          'apikey': CFG.sbKey,
+          'Authorization': 'Bearer ' + CFG.sbKey
+        }
       }).catch(function () {});
     }
     S.espDay = null; lowArmed = true;
     var p = levelPct(); if (p !== null) save('telur-level-base', Math.round(p * 10) / 10);
     closeOv('reset-overlay');
     cycle(); renderAll(); renderHistory();
-    toast('Hari dan semua data sudah di-reset');
+    toast('Hari dan semua data cloud sudah di-reset');
   });
 
   /* =====================================================================
      NAVIGASI HALAMAN
      ===================================================================== */
-  /* Halaman berbentuk slide: geser kiri/kanan (HP), tombol menu bawah,
-     atau tombol panah ← → di keyboard (desktop). */
   var PAGES = ['dashboard', 'grafik', 'perangkat'], cur = 0;
   var slider = $('slider'), track = $('track');
   function pageEl(i) { return $('page-' + PAGES[i]); }
@@ -834,7 +805,6 @@
     if (e.key === 'ArrowLeft') go(cur - 1);
   });
 
-  // Geser dengan jari (atau tarik dengan mouse)
   (function swipe() {
     var x0 = 0, y0 = 0, dx = 0, dragging = false, decided = false, horiz = false, w = 1;
     function start(x, y, target) {
@@ -853,7 +823,7 @@
       }
       if (e && e.cancelable) e.preventDefault();
       dx = mx;
-      if ((cur === 0 && dx > 0) || (cur === PAGES.length - 1 && dx < 0)) dx *= .3;   // efek mentok di ujung
+      if ((cur === 0 && dx > 0) || (cur === PAGES.length - 1 && dx < 0)) dx *= .3;
       track.style.transform = 'translateX(calc(' + (-100 * cur) + '% + ' + dx + 'px))';
     }
     function end() {
@@ -884,7 +854,7 @@
     var tail = m.destinationName.split('/').pop(), t = m.payloadString;
     S.msgCount++; S.lastMsg = Date.now(); S.lastTopic = tail; flash();
     if (tail === 'status') { S.esp = /online/i.test(t); renderAll(); return; }
-    if (m.retained) { renderMqtt(); return; }        // abaikan data lama di broker
+    if (m.retained) { renderMqtt(); return; }
     if (tail === 'siklus') {
       var mm = t.match(/HARI:(\d+).*TARGET:(\d+)/i);
       if (mm) { S.espDay = parseInt(mm[1], 10); S.totalDays = parseInt(mm[2], 10); cycle(); }
@@ -918,14 +888,15 @@
       var s = ((d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds() + S.espOffset) % 86400 + 86400) % 86400;
       $('live-footer-clock').textContent = pad(Math.floor(s / 3600)) + '.' + pad(Math.floor(s / 60) % 60) + '.' + pad(s % 60) + ' WIB';
     }
-    if (d.toDateString() !== lastDate) { lastDate = d.toDateString(); cycle(); }   // ganti hari tengah malam
+    if (d.toDateString() !== lastDate) { lastDate = d.toDateString(); cycle(); }
     if (S.pending && Date.now() - S.pending >= 4000) { S.pending = 0; renderLamp(); }
     if (++tickN % 5 === 0) { renderMqtt(); renderDevices(); }
-    if (tickN % 30 === 0) { maybeSample(); renderSesi(history()); }
+    if (tickN % 30 === 0) { renderSesi(history()); }
+    if (tickN % 60 === 0) { syncFromSupabase(); }
   }
 
   /* =====================================================================
-     SOROT BAGIAN KOTAK — ketuk indikator, bagian alat yang sesuai menyala
+     SOROT BAGIAN KOTAK
      ===================================================================== */
   var focusKey = null, focusTimer;
   var FOCUS_TXT = {
@@ -933,7 +904,7 @@
     temp: 'Sensor suhu air', hum: 'Kelembaban dalam kotak', lamp: 'Lampu'
   };
   function setFocus(k) {
-    if (k === focusKey) k = null;          // ketuk lagi = kembali normal
+    if (k === focusKey) k = null;
     focusKey = k;
     document.querySelectorAll('[data-focus]').forEach(function (el) { el.classList.toggle('is-focus', el.dataset.focus === k); });
     $('scene').setAttribute('data-focus', k || '');
@@ -942,7 +913,7 @@
     $('hud-hint-text').textContent = k ? 'Menyorot: ' + FOCUS_TXT[k] : 'Geser untuk memutar';
     if (window.TELUR3D && window.TELUR3D.focus) window.TELUR3D.focus(k);
     clearTimeout(focusTimer);
-    if (k) focusTimer = setTimeout(function () { setFocus(k); }, 12000);   // kembali normal otomatis
+    if (k) focusTimer = setTimeout(function () { setFocus(k); }, 12000);
   }
   document.querySelectorAll('[data-focus]').forEach(function (el) {
     el.addEventListener('click', function (e) {
@@ -950,16 +921,25 @@
       if (el.classList.contains('stat') && window.innerWidth < 720) $('scene').scrollIntoView({ behavior: 'smooth', block: 'center' });
     });
   });
-   /* ============ SINKRONISASI SUPABASE ============ */
+
+  /* ============ SINKRONISASI SUPABASE (SUMBER TUNGGAL) ============ */
   function syncFromSupabase() {
     if (!CFG.sbUrl || !CFG.sbKey || CFG.sbKey.indexOf('TEMPEL_') !== -1) return;
 
     fetch(CFG.sbUrl + '/rest/v1/mqtt_messages?select=topic,payload,tanggal_sesi,sesi,created_at&order=created_at.asc&limit=1000', {
-      headers: { 'apikey': CFG.sbKey }
+      headers: {
+        'apikey': CFG.sbKey,
+        'Authorization': 'Bearer ' + CFG.sbKey
+      }
     })
-    .then(function (res) { return res.ok ? res.json() : []; })
+    .then(function (res) { return res.ok ? res.json() : null; })
     .then(function (rows) {
-      if (!rows || !rows.length) return;
+      if (!rows) return;
+      if (!rows.length) {
+        cloudHistory = [];
+        renderHistory();
+        return;
+      }
 
       var map = {};
       var sesiIdx = {
@@ -970,6 +950,7 @@
       var startDay = new Date(startStr);
 
       rows.forEach(function (row) {
+        if (!row.tanggal_sesi || !row.sesi) return;
         var idx = sesiIdx[row.sesi] !== undefined ? sesiIdx[row.sesi] : 0;
         var key = row.tanggal_sesi + '#' + idx;
         if (!map[key]) {
@@ -1010,30 +991,22 @@
         }
       });
 
-      var merged = {};
-      history().forEach(function (r) { merged[r.key] = r; });
-      Object.keys(map).forEach(function (k) { merged[k] = map[k]; });
-
-      var finalArr = Object.keys(merged).sort().map(function (k) { return merged[k]; });
-      save(HKEY, finalArr);
+      cloudHistory = Object.keys(map).sort().map(function (k) { return map[k]; });
       renderHistory();
     })
     .catch(function (err) { console.warn('Gagal memuat riwayat Supabase:', err); });
   }
 
-  
-   
   /* ============ MULAI ============ */
   buildScene(); buildTabs();
   cycle(); renderAll(); renderHistory();
   go(location.hash.slice(1));
   tick(); setInterval(tick, 1000);
   connect();
-   syncFromSupabase();
+  syncFromSupabase();
 
   // Untuk uji coba lewat Console browser:
   window.showDay7Alert = function () { openOv('day7-overlay', 'day7-close', [200, 100, 200]); };
   window.showLevelAlert = function () { openOv('lvl-overlay', 'lvl-close', [300, 150, 300]); };
-  window.simpanSekarang = function () { maybeSample(true); };                 // simpan 1 data sekarang
-  window.uji = function (n, teks) { handleSlave(n, teks); };                   // contoh: uji(1, 'garam:22,suhu:29.5,level:64')
+  window.uji = function (n, teks) { handleSlave(n, teks); };
 })();
