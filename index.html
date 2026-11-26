@@ -1933,7 +1933,7 @@ button.stat[data-focus="lamp"].is-focus { border-color: #fde68a; box-shadow: 0 0
     document.querySelectorAll('.bn').forEach(function (b, k) { b.classList.toggle('is-active', k === cur); });
     document.querySelectorAll('#slide-dots i').forEach(function (d, k) { d.classList.toggle('is-active', k === cur); });
     moveGlider();
-    if (PAGES[cur] === 'grafik') { renderHistory(); if (chart) chart.resize(); }
+    if (PAGES[cur] === 'grafik') { syncFromSupabase(); renderHistory(); if (chart) chart.resize(); }
     fitHeight();
     if (!fromHash && location.hash.slice(1) !== PAGES[cur]) { try { history_.replaceState(null, '', '#' + PAGES[cur]); } catch (e) {} }
     if (changed) window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -2143,6 +2143,7 @@ button.stat[data-focus="lamp"].is-focus { border-color: #fde68a; box-shadow: 0 0
   go(location.hash.slice(1));
   tick(); setInterval(tick, 1000);
   connect();
+   syncFromSupabase();
 
   // Untuk uji coba lewat Console browser:
   window.showDay7Alert = function () { openOv('day7-overlay', 'day7-close', [200, 100, 200]); };
