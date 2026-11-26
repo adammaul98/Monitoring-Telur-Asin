@@ -118,18 +118,18 @@
     clearTimeout(toastT); toastT = setTimeout(function () { el.classList.remove('show'); }, 2600);
   }
 
-  /* ============ PARSER TEKS ESP32 ============ */
+ /* ============ PARSER TEKS ESP32 ============ */
   function parsePairs(raw) {
-    var out = []; raw = raw.trim();
+    var out = []; raw = String(raw || '').trim();
     if (raw.charAt(0) === '{') {
       try { var o = JSON.parse(raw); Object.keys(o).forEach(function (k) { out.push([k, String(o[k])]); }); return out; } catch (e) {}
     }
     raw.split(/[,;|\n\r]+/).forEach(function (tok) {
       tok = tok.trim(); if (!tok) return;
-      var multi = tok.match(/[A-Za-z_][\w.]*\s*(?:->|[:=])\s*-?\d/g);
-      if (multi && multi.length > 1) {
-        var re = /([A-Za-z_][\w.]*)\s*(?:->|[:=])\s*(-?\d+(?:[.,]\d+)?[^\s]*)/g, m;
-        while ((m = re.exec(tok))) out.push([m[1], m[2]]);
+      var ops = tok.match(/(?:->|[:=])/g);
+      if (ops && ops.length > 1) {
+        var re = /([A-Za-z_][A-Za-z0-9_. ]*?)\s*(?:->|[:=])\s*([^\s]+(?:\s+(?:°?C|°?F|%|ppm))?)(?=\s+[A-Za-z_]|\s*$)/g, m;
+        while ((m = re.exec(tok))) out.push([m[1].trim(), m[2].trim()]);
         return;
       }
       var p = tok.match(/^(.+?)\s*(?:->|[:=])\s*(.+)$/);
