@@ -206,12 +206,12 @@ svg { display: block; }
 .floor { position: absolute; left: 6%; right: 6%; bottom: 14px; height: 12px; border-radius: 50%; background: radial-gradient(closest-side, rgba(0, 0, 0, .55), transparent); }
 
 /* Telur */
-.eggs { position: absolute; left: 4%; right: 46px; bottom: 6px; height: 50%; z-index: 1; }
+.eggs { position: absolute; left: 44px; right: 78px; bottom: 6px; height: 50%; z-index: 1; }
 .egg-row { position: absolute; left: 0; right: 0; display: flex; justify-content: center; gap: 4px; }
 .egg-row.back { bottom: 32%; filter: brightness(.82); }
 .egg-row.front { bottom: 0; }
 .egg {
-  width: clamp(32px, 10vw, 50px); aspect-ratio: .78;
+  width: clamp(26px, 8.5vw, 50px); aspect-ratio: .78;
   border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
   background: radial-gradient(circle at 35% 28%, #ffffff 0, var(--egg) 42%, color-mix(in srgb, var(--egg) 70%, #3f5f57) 100%);
   box-shadow: inset -4px -6px 10px rgba(0, 0, 0, .18), 0 4px 6px rgba(0, 0, 0, .25);
@@ -249,7 +249,7 @@ svg { display: block; }
 .speck { position: absolute; width: 3px; height: 3px; background: rgba(255, 255, 255, .85); border-radius: 1px; animation: drift var(--d, 8s) ease-in-out infinite; animation-delay: var(--dl, 0s); }
 
 .lvl-tag {
-  position: absolute; left: 10px; bottom: calc(var(--lvl) + 6px); z-index: 6;
+  position: absolute; left: 52px; bottom: calc(var(--lvl) + 6px); z-index: 6;
   display: flex; align-items: baseline; gap: 5px;
   padding: 3px 8px; border-radius: 8px;
   background: rgba(2, 6, 23, .72); border: 1px solid rgba(96, 165, 250, .45);
@@ -262,7 +262,7 @@ svg { display: block; }
 .drops { position: absolute; left: 0; right: 0; top: 0; height: 55%; z-index: 4; opacity: .25; transition: opacity 1s; pointer-events: none; }
 .droplet { position: absolute; width: 5px; height: 7px; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; background: rgba(186, 230, 253, .65); box-shadow: inset -1px -1px 1px rgba(255, 255, 255, .5); animation: slide var(--d, 9s) ease-in infinite; animation-delay: var(--dl, 0s); }
 .hum-chip {
-  position: absolute; right: 52px; top: 12px; z-index: 6;
+  position: absolute; left: 52px; top: 10px; z-index: 6;
   display: flex; align-items: center; gap: 5px; padding: 3px 8px; border-radius: 8px;
   background: rgba(2, 6, 23, .7); border: 1px solid rgba(34, 211, 238, .35); font-size: 10px; color: var(--muted);
 }
@@ -425,7 +425,7 @@ svg { display: block; }
 .chart-box { position: relative; height: 300px; }
 @media (min-width: 1100px) { .chart-box { height: 360px; } }
 .chart-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 20px; font-size: 13px; color: var(--muted); background: rgba(12, 19, 36, .85); border-radius: 12px; border: 1px dashed var(--line2); }
-.sesi-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 6px; }
+.sesi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 6px; }
 .sesi { padding: 9px 10px; border-radius: 12px; border: 1px solid var(--line); background: rgba(15, 23, 42, .6); font-size: 11px; color: var(--muted); }
 .sesi b { display: block; font-size: 13px; color: #fff; }
 .sesi.done { border-color: rgba(52, 211, 153, .4); }
@@ -564,3 +564,134 @@ td.empty { text-align: center; color: var(--dim); font-family: inherit; padding:
   .bn svg { width: 18px; height: 18px; }
   .bn-glider { top: 7px; bottom: 7px; }
 }
+
+/* =========================================================
+   SENSOR KETINGGIAN AIR DI DALAM KOTAK (penggaris + pelampung)
+   ========================================================= */
+.ruler { position: absolute; left: 6px; top: 14px; bottom: 0; width: 22px; z-index: 5; border-left: 2px solid rgba(226, 232, 240, .35); }
+.ruler i { position: absolute; left: 0; height: 1px; width: 6px; background: rgba(226, 232, 240, .45); }
+.ruler i.major { width: 11px; background: rgba(226, 232, 240, .75); }
+.ruler i b { position: absolute; left: 13px; top: -6px; font: 700 8px 'JetBrains Mono', monospace; color: rgba(226, 232, 240, .7); }
+.ruler i.low { width: 22px; height: 0; border-top: 1px dashed rgba(251, 113, 133, .9); background: none; }
+.ruler i.low b { color: #fda4af; left: 2px; top: -11px; }
+.float-rod { position: absolute; left: 36px; top: 0; bottom: 6px; width: 2px; z-index: 4; background: linear-gradient(180deg, rgba(148, 163, 184, .7), rgba(148, 163, 184, .3)); }
+.float { position: absolute; left: 29px; bottom: calc(var(--lvl) - 9px); z-index: 5; width: 16px; height: 18px; transition: bottom 1.4s cubic-bezier(.4, 0, .2, 1); }
+.float span { display: block; width: 100%; height: 100%; border-radius: 50%; background: linear-gradient(180deg, #fb7185 0 50%, #f8fafc 50% 100%); box-shadow: 0 0 0 2px rgba(15, 23, 42, .6), 0 0 10px rgba(251, 113, 133, .5); animation: floatBob 2.4s ease-in-out infinite; }
+.tank.low .float span { box-shadow: 0 0 0 2px rgba(15, 23, 42, .6), 0 0 16px rgba(251, 113, 133, .95); }
+
+/* =========================================================
+   SENSOR TDS DI DALAM KOTAK (probe + layar)
+   ========================================================= */
+.milk { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255, 255, 255, .22), rgba(253, 242, 248, .10)); opacity: var(--milk, 0); transition: opacity 1.2s; }
+.tds-probe { position: absolute; right: 54px; top: 0; height: 70%; width: 14px; z-index: 5; display: flex; flex-direction: column; align-items: center; }
+.tds-cable { width: 3px; flex: 0 0 34%; background: #0f172a; border: 1px solid rgba(148, 163, 184, .4); border-top: 0; border-bottom: 0; }
+.tds-body { width: 12px; flex: 1; border-radius: 4px 4px 2px 2px; background: linear-gradient(90deg, #0f172a, #334155 50%, #0f172a); border: 1px solid rgba(148, 163, 184, .5); position: relative; }
+.tds-body::after { content: ''; position: absolute; left: 1px; right: 1px; top: 30%; height: 4px; background: var(--pink); opacity: .8; border-radius: 1px; }
+.tds-tip { position: relative; width: 12px; height: 14px; display: flex; justify-content: space-between; padding: 0 2px; }
+.tds-tip i { width: 2px; height: 100%; background: linear-gradient(180deg, #e2e8f0, #94a3b8); border-radius: 0 0 2px 2px; }
+.tds-tip .pulse { position: absolute; left: 50%; bottom: -4px; width: 26px; height: 26px; margin-left: -13px; border-radius: 50%; border: 1.5px solid rgba(244, 114, 182, .9); opacity: 0; animation: tdsPulse 2s ease-out infinite; }
+.tds-tip .pulse.d2 { animation-delay: 1s; }
+.tds-probe.dry .pulse { animation: none; }
+.tds-chip { position: absolute; right: 60px; top: 40px; z-index: 7; display: grid; grid-template-columns: auto auto auto; align-items: baseline; gap: 2px 5px; padding: 4px 8px 5px; border-radius: 8px; background: rgba(2, 6, 23, .8); border: 1px solid rgba(244, 114, 182, .45); font-size: 10px; color: var(--muted); }
+.tds-chip > span { font-size: 9px; font-weight: 700; color: #f9a8d4; }
+.tds-chip b { font-size: 12px; color: #fff; }
+.tds-chip small { font-size: 9px; }
+.tds-chip.dry { border-color: rgba(245, 158, 11, .6); }
+.tds-seg { grid-column: 1 / -1; display: flex; gap: 2px; }
+.tds-seg i { flex: 1; height: 4px; border-radius: 2px; background: rgba(51, 65, 85, .9); transition: background .5s; }
+.tds-seg i.on { background: var(--pink); box-shadow: 0 0 6px rgba(244, 114, 182, .7); }
+.tds-seg i.on.lo { background: var(--blue); box-shadow: 0 0 6px rgba(96, 165, 250, .7); }
+
+/* =========================================================
+   KARTU TDS (meter jarum + gelas)
+   ========================================================= */
+.tds-main { display: flex; align-items: center; gap: 14px; }
+.beaker { position: relative; flex: 0 0 70px; height: 96px; border: 2px solid rgba(186, 230, 253, .35); border-top: 0; border-radius: 0 0 14px 14px; overflow: hidden; }
+.beaker-water { position: absolute; left: 0; right: 0; bottom: 0; height: 68%; background: linear-gradient(180deg, rgba(56, 189, 248, .45), rgba(14, 116, 144, .7)); }
+.beaker-water::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 2px; background: rgba(186, 230, 253, .7); }
+.beaker-milk { position: absolute; inset: 0; background: rgba(253, 242, 248, .45); opacity: 0; transition: opacity 1.2s; }
+.beaker-probe { position: absolute; right: 12px; top: 0; height: 80%; width: 6px; background: #1e293b; border: 1px solid rgba(148, 163, 184, .5); border-radius: 0 0 2px 2px; z-index: 2; }
+.beaker-probe i { position: absolute; left: 50%; bottom: -5px; width: 14px; height: 14px; margin-left: -7px; border-radius: 50%; border: 1px solid rgba(244, 114, 182, .9); animation: tdsPulse 2s ease-out infinite; }
+.beaker .crystal { z-index: 3; animation-name: dissolve; }
+.gauge { position: relative; flex: 1; min-width: 0; max-width: 220px; padding-bottom: 30px; }
+.gauge svg { width: 100%; height: auto; overflow: visible; }
+.g-bg, .g-fg { fill: none; stroke-width: 10; stroke-linecap: round; }
+.g-bg { stroke: rgba(51, 65, 85, .8); }
+.g-fg { stroke: url(#tdsg); stroke-dasharray: 157.1; stroke-dashoffset: 157.1; transition: stroke-dashoffset 1.2s cubic-bezier(.4, 0, .2, 1); filter: drop-shadow(0 0 4px rgba(244, 114, 182, .5)); }
+.g-needle { transform-origin: 60px 62px; transform: rotate(-90deg); transition: transform 1.2s cubic-bezier(.34, 1.4, .5, 1); }
+.g-needle line { stroke: #fff; stroke-width: 3; stroke-linecap: round; }
+.g-needle circle { fill: #fff; stroke: var(--pink); stroke-width: 2; }
+.g-val { position: absolute; left: 0; right: 0; bottom: 0; text-align: center; line-height: 1; }
+.g-val b { font-size: 24px; font-weight: 800; color: #fff; }
+.g-val span { margin-left: 4px; font-size: 11px; font-weight: 700; color: var(--muted); }
+.tds-zones { display: flex; justify-content: space-between; gap: 6px; margin-top: 12px; font-size: 9px; }
+.tds-zones span { flex: 1; text-align: center; padding: 3px 0; border-radius: 6px; background: rgba(30, 41, 59, .6); color: var(--dim); border: 1px solid transparent; }
+.tds-zones span.is-on { color: #fff; border-color: rgba(244, 114, 182, .5); background: rgba(131, 24, 67, .35); }
+
+@keyframes floatBob { 0%, 100% { transform: translateY(0) rotate(-4deg); } 50% { transform: translateY(-3px) rotate(4deg); } }
+@keyframes tdsPulse { 0% { transform: scale(.3); opacity: .9; } 100% { transform: scale(1.4); opacity: 0; } }
+@keyframes dissolve { 0% { transform: translateY(0) rotate(0); opacity: 0; } 10% { opacity: 1; } 70% { opacity: .8; } 100% { transform: translateY(80px) rotate(160deg) scale(.2); opacity: 0; } }
+
+/* =========================================================
+   TAMPILAN 3D
+   ========================================================= */
+.hud { display: none; }
+.scene.is-3d .tank, .scene.is-3d .scene-lamp, .scene.is-3d .cord, .scene.is-3d .cone, .scene.is-3d .floor { display: none; }
+.scene.is-3d { background: radial-gradient(120% 90% at 50% 10%, rgba(30, 41, 59, .7), rgba(2, 6, 17, .95)); }
+.scene.is-3d canvas.three { position: absolute; inset: 0; width: 100% !important; height: 100% !important; display: block; cursor: grab; outline: none; }
+.scene.is-3d canvas.three:active { cursor: grabbing; }
+.scene.is-3d .hud { display: block; position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+.hud-chip {
+  position: absolute; display: flex; align-items: baseline; gap: 5px;
+  padding: 5px 9px; border-radius: 10px; background: rgba(2, 6, 23, .72);
+  border: 1px solid var(--line2); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  font-size: 10px; color: var(--muted);
+}
+.hud-chip span { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+.hud-chip b { font-size: 13px; color: #fff; }
+.hud-chip small { font-size: 9px; }
+.hud-chip.c-lv { left: 10px; top: 10px; border-color: rgba(96, 165, 250, .5); }
+.hud-chip.c-lv span { color: #93c5fd; }
+.hud-chip.c-lv.bad { border-color: rgba(251, 113, 133, .8); box-shadow: 0 0 14px rgba(244, 63, 94, .45); }
+.hud-chip.c-tds { right: 10px; top: 10px; border-color: rgba(244, 114, 182, .5); }
+.hud-chip.c-tds span { color: #f9a8d4; }
+.hud-chip.c-hum { left: 10px; bottom: 10px; border-color: rgba(34, 211, 238, .45); }
+.hud-chip.c-hum span { color: #a5f3fc; }
+.hud-chip.c-tmp { right: 10px; bottom: 10px; border-color: rgba(245, 158, 11, .5); }
+.hud-chip.c-tmp span { color: #fcd34d; }
+.hud-hint { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 99px; background: rgba(2, 6, 23, .6); font-size: 10px; color: var(--muted); transition: opacity .6s; white-space: nowrap; }
+.hud-hint svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.hud-hint.hide { opacity: 0; }
+@media (max-width: 560px) { .hud-hint { bottom: 48px; } }
+
+/* =========================================================
+   SOROT BAGIAN KOTAK (ketuk indikator)
+   ========================================================= */
+.scene.is-3d .hud-chip { pointer-events: auto; cursor: pointer; font: inherit; color: var(--muted); transition: transform .2s, box-shadow .3s, background .3s; }
+.hud-chip:hover { transform: translateY(-1px); }
+.hud-chip:active { transform: scale(.96); }
+.hud-chip.is-focus { transform: scale(1.06); background: rgba(15, 23, 42, .92); }
+.hud-chip.c-lv.is-focus { box-shadow: 0 0 0 2px #60a5fa, 0 0 22px rgba(96, 165, 250, .7); }
+.hud-chip.c-tds.is-focus { box-shadow: 0 0 0 2px #f472b6, 0 0 22px rgba(244, 114, 182, .7); }
+.hud-chip.c-hum.is-focus { box-shadow: 0 0 0 2px #22d3ee, 0 0 22px rgba(34, 211, 238, .7); }
+.hud-chip.c-tmp.is-focus { box-shadow: 0 0 0 2px #f59e0b, 0 0 22px rgba(245, 158, 11, .7); }
+.hud-hint.focus { color: #fff; background: rgba(15, 23, 42, .85); border: 1px solid var(--line2); }
+
+button.stat { font: inherit; color: inherit; text-align: left; cursor: pointer; transition: transform .2s, border-color .3s, box-shadow .3s, background .3s; }
+button.stat:hover { border-color: var(--line2); background: rgba(30, 41, 59, .7); }
+button.stat:active { transform: scale(.97); }
+button.stat::after { content: 'ketuk untuk sorot'; display: block; margin-top: 2px; font-size: 9px; color: var(--dim); opacity: .7; }
+button.stat.is-focus::after { content: 'sedang disorot'; color: #fff; opacity: 1; }
+button.stat[data-focus="tds"].is-focus { border-color: #f472b6; box-shadow: 0 0 18px rgba(244, 114, 182, .45); }
+button.stat[data-focus="temp"].is-focus { border-color: #f59e0b; box-shadow: 0 0 18px rgba(245, 158, 11, .45); }
+button.stat[data-focus="level"].is-focus { border-color: #60a5fa; box-shadow: 0 0 18px rgba(96, 165, 250, .45); }
+button.stat[data-focus="lamp"].is-focus { border-color: #fde68a; box-shadow: 0 0 18px rgba(253, 230, 138, .45); }
+
+/* versi 2D (jika 3D tidak tersedia) */
+.scene[data-focus="level"] .float, .scene[data-focus="level"] .ruler, .scene[data-focus="level"] .lvl-tag { filter: drop-shadow(0 0 8px #60a5fa) brightness(1.4); animation: focus2d 1.2s ease-in-out infinite; }
+.scene[data-focus="tds"] .tds-probe, .scene[data-focus="tds"] .tds-chip { filter: drop-shadow(0 0 8px #f472b6) brightness(1.4); animation: focus2d 1.2s ease-in-out infinite; }
+.scene[data-focus="temp"] .thermo { filter: drop-shadow(0 0 10px #f59e0b) brightness(1.3); animation: focus2d 1.2s ease-in-out infinite; }
+.scene[data-focus="hum"] .drops { opacity: 1 !important; filter: drop-shadow(0 0 6px #22d3ee); }
+.scene[data-focus="hum"] .hum-chip { box-shadow: 0 0 16px rgba(34, 211, 238, .7); }
+.scene[data-focus="lamp"] .scene-lamp { filter: drop-shadow(0 0 14px #fde68a) brightness(1.3); }
+@keyframes focus2d { 0%, 100% { opacity: 1; } 50% { opacity: .65; } }
