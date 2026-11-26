@@ -9,14 +9,22 @@
     user: 'Telur-asin', pass: 'TELURASIN12345',
     sub: 'telur/slave/+',               // data slave 1, 2, led, time, status, siklus
     cmd: 'telur/control/heater',        // perintah ON / OFF ke ESP32
+    sbUrl: 'https://tiqzgpyfvtcftdobtpge.supabase.co',
+    sbKey: 'sb_publishable_jYCxvxrzqKzbZ8VCR16BRQ_Xu3aVHX8',
     cycleDays: 7,                       // lama siklus (hari), bisa diubah dengan mengetuk "Lama siklus"
     alertDay: 7,                        // hari munculnya peringatan (sama seperti program sebelumnya)
     levelLow: 20,                       // peringatan air rendah jika di bawah angka ini (%)
     levelReset: 25,                     // peringatan bisa muncul lagi setelah level naik di atas angka ini (%)
-    garamMax: 30,                       // nilai garam yang dianggap indikator penuh (sesuaikan satuan sensor)
+    // Sensor TDS (kepekatan garam). Sesuaikan dengan rentang sensor & hasil kalibrasi larutanmu.
+    tds: { max: 1000, rendah: 300, pekat: 700, unit: 'ppm' },   // max = ujung skala, rendah/pekat = batas zona
     staleSec: 120,                      // slave dianggap "Terlambat" jika tidak ada data selama ini (detik)
-    // 3 sesi penyimpanan data per hari. Data pertama yang masuk di tiap sesi akan disimpan.
-    sesi: [{ name: 'Pagi', from: 6 }, { name: 'Siang', from: 12 }, { name: 'Malam', from: 18 }],
+    // 8 sesi penyimpanan data per hari (setiap 3 jam sekali).
+    sesi: [
+      { name: '00.00', from: 0 },  { name: '03.00', from: 3 },
+      { name: '06.00', from: 6 },  { name: '09.00', from: 9 },
+      { name: '12.00', from: 12 }, { name: '15.00', from: 15 },
+      { name: '18.00', from: 18 }, { name: '21.00', from: 21 }
+    ],
     suhu: { dingin: 20, hangat: 32, panas: 40 },    // batas status suhu air (°C)
     lembab: { kering: 40, basah: 80 }               // batas status kelembaban (%)
   };
@@ -46,7 +54,7 @@
   var ORDER = { 1: ['garam', 'suhuAir', 'level', 'humIn'], 2: ['suhuRuang', 'humOut', 'heater', 'humIn'] };
 
   var META = {
-    garam:     { label: 'Kepekatan Garam',        unit: '',   color: '#f472b6', icon: 'salt' },
+    garam:     { label: 'Kepekatan Garam (TDS)',  unit: 'ppm', color: '#f472b6', icon: 'salt' },
     suhuAir:   { label: 'Suhu Air',               unit: '°C', color: '#f59e0b', icon: 'temp' },
     level:     { label: 'Ketinggian Air',         unit: '%',  color: '#60a5fa', icon: 'wave' },
     humIn:     { label: 'Kelembaban Dalam Kotak', unit: '%',  color: '#22d3ee', icon: 'drop' },
@@ -61,7 +69,7 @@
     { n: 1, color: 'cyan', name: 'Slave 1', role: 'Unit Kotak Pengasinan',
       place: 'Dipasang di dalam / pada kotak rendaman telur. Membaca kondisi larutan garam.',
       items: [
-        { id: 'garam', alat: 'Sensor kepekatan garam (TDS / salinitas)', fungsi: 'Mengukur kadar garam larutan rendaman telur.' },
+        { id: 'garam', alat: 'Sensor TDS (kepekatan garam)', fungsi: 'Probe dicelup ke larutan, mengukur zat terlarut (garam) dalam ppm.' },
         { id: 'suhuAir', alat: 'Sensor suhu air (probe tahan air)', fungsi: 'Mengukur suhu larutan garam di dalam kotak.' },
         { id: 'level', alat: 'Sensor ketinggian air (water level)', fungsi: 'Memantau tinggi larutan agar telur tetap terendam.' },
         { id: 'humIn', alat: 'Sensor kelembaban dalam kotak', fungsi: 'Mengukur kelembaban udara di dalam kotak.' }
@@ -79,7 +87,7 @@
     { id: 'suhu', label: 'Suhu', fields: ['suhuAir', 'suhuRuang'], unit: '°C' },
     { id: 'lembab', label: 'Kelembaban', fields: ['humIn', 'humOut'], unit: '%', min: 0, max: 100 },
     { id: 'level', label: 'Ketinggian Air', fields: ['level'], unit: '%', min: 0, max: 100 },
-    { id: 'garam', label: 'Kepekatan Garam', fields: ['garam'], unit: '' }
+    { id: 'garam', label: 'Kepekatan Garam (TDS)', fields: ['garam'], unit: 'ppm' }
   ];
 
   var ICON = {
@@ -191,7 +199,7 @@
       b.appendChild(s);
     }
     var salt = $('salt');
-    for (i = 0; i < 30; i++) {
+    for (i = 0; i < 44; i++) {
       var k = document.createElement('span'); k.className = 'speck';
       k.style.cssText = 'left:' + rnd(2, 88) + '%;top:' + rnd(5, 95) + '%;--d:' + rnd(6, 12).toFixed(1) + 's;--dl:' + rnd(-8, 0).toFixed(1) + 's;opacity:' + rnd(.4, 1).toFixed(2);
       salt.appendChild(k);
@@ -204,11 +212,16 @@
       drops.appendChild(d);
     }
     var sh = $('shaker');
-    for (i = 0; i < 10; i++) {
+    for (i = 0; i < 12; i++) {
       var c = document.createElement('span'); c.className = 'crystal';
-      c.style.cssText = 'left:' + rnd(12, 80) + '%;--d:' + rnd(1.8, 3).toFixed(2) + 's;--dl:' + rnd(0, 3).toFixed(2) + 's';
+      c.style.cssText = 'left:' + rnd(10, 60) + '%;--d:' + rnd(2.2, 3.4).toFixed(2) + 's;--dl:' + rnd(0, 3.4).toFixed(2) + 's';
       sh.appendChild(c);
     }
+    // penggaris sensor ketinggian air di dalam kotak
+    var ru = $('ruler'), h = '';
+    for (var v = 0; v <= 100; v += 10) h += '<i class="' + (v % 50 === 0 ? 'major' : '') + '" style="bottom:' + v + '%">' + (v % 50 === 0 ? '<b>' + v + '</b>' : '') + '</i>';
+    h += '<i class="low" style="bottom:' + CFG.levelLow + '%"><b>' + CFG.levelLow + '</b></i>';
+    ru.innerHTML = h;
   }
 
   /* =====================================================================
@@ -266,7 +279,17 @@
     $('tank-temp').textContent = t === null ? '—°C' : fmtNum(t) + '°C';
 
     var g = num('garam');
-    $('salt').style.opacity = g === null ? .35 : clamp(g / CFG.garamMax, .05, 1).toFixed(2);
+    // garam: makin pekat makin banyak butiran & air makin keruh
+    var gp = tdsPct(g), nSpeck = Math.round((g === null ? .25 : Math.max(.08, gp)) * 44);
+    Array.prototype.forEach.call($('salt').children, function (el, i) { el.style.display = i < nSpeck ? '' : 'none'; });
+    scene.style.setProperty('--milk', g === null ? 0 : (gp * .9).toFixed(2));
+    var dry = w < 30;   // ujung probe TDS di 30% dari dasar
+    $('tds-probe').classList.toggle('dry', dry);
+    $('tds-chip').classList.toggle('dry', dry);
+    $('tank-tds').textContent = dry ? 'kering' : (S.vals.garam ? S.vals.garam.num : '—');
+    $('tank-tds-unit').textContent = dry ? '' : (S.vals.garam ? S.vals.garam.unit : CFG.tds.unit);
+    var segs = g === null ? 0 : Math.max(1, Math.ceil(gp * 5));
+    Array.prototype.forEach.call($('tds-seg').children, function (el, i) { el.className = i < segs ? 'on' + (g < CFG.tds.rendah ? ' lo' : '') : ''; });
 
     var h = num('humIn');
     $('drops').style.opacity = h === null ? .2 : clamp((h - 30) / 70, .05, 1).toFixed(2);
@@ -283,6 +306,24 @@
     $('st-suhu').textContent = txt('suhuAir');
     $('st-level').textContent = S.vals.level ? txt('level') : '≈ ' + w + '%';
     $('st-lampu').textContent = S.heater === null ? '—' : S.heater ? 'MENYALA' : 'MATI';
+
+    // label di atas tampilan 3D
+    $('hud-level').textContent = Math.round(w) + '%';
+    $('hud-level-note').textContent = est ? 'estimasi' : 'sensor';
+    $('hud-level-chip').classList.toggle('bad', w < CFG.levelLow);
+    $('hud-tds').textContent = dry ? 'kering' : (S.vals.garam ? S.vals.garam.num : '—');
+    $('hud-tds-unit').textContent = dry ? '' : (S.vals.garam ? S.vals.garam.unit : CFG.tds.unit);
+    $('hud-hum').textContent = h === null ? '—' : Math.round(h) + '%';
+    $('hud-temp').textContent = t === null ? '—' : fmtNum(t) + '°C';
+
+    // kirim kondisi terbaru ke tampilan 3D
+    window.TELUR3D_STATE = {
+      level: w, est: est, low: w < CFG.levelLow, lowLine: CFG.levelLow,
+      temp: t, tempColor: tempColor(t), tdsPct: gp, tdsKnown: g !== null, dry: dry,
+      tdsText: S.vals.garam ? S.vals.garam.num : '—', tdsUnit: S.vals.garam ? S.vals.garam.unit : CFG.tds.unit,
+      hum: h, lamp: S.heater === true, eggP: p, day: S.day
+    };
+    if (window.TELUR3D && window.TELUR3D.update) window.TELUR3D.update(window.TELUR3D_STATE);
   }
 
   function renderLevel() {
@@ -347,16 +388,28 @@
     $('room-temp').textContent = txt('suhuRuang');
   }
 
+  function tdsPct(g) { return g === null ? 0 : clamp(g / CFG.tds.max, 0, 1); }
+  function tdsStatus(g) {
+    if (g === null) return ['idle', 'Menunggu', -1];
+    if (g < CFG.tds.rendah) return ['info', 'Rendah', 0];
+    if (g < CFG.tds.pekat) return ['ok', 'Sedang', 1];
+    return ['warn', 'Pekat', 2];
+  }
   function renderGaram() {
-    var G = S.vals.garam, g = num('garam');
+    var G = S.vals.garam, g = num('garam'), p = tdsPct(g), st = tdsStatus(g);
     $('garam-val').textContent = G ? G.num : '—';
-    $('garam-unit').textContent = G ? G.unit : '';
-    var p = g === null ? 0 : clamp(g / CFG.garamMax, 0, 1);
-    $('garam-bar').style.width = (p * 100) + '%';
-    $('shaker').style.setProperty('--pile', (8 + p * 60) + '%');
-    $('shaker').style.opacity = g === null ? .5 : 1;
-    tag($('garam-tag'), g === null ? 'idle' : p < .3 ? 'info' : p < .7 ? 'ok' : 'warn', g === null ? 'Menunggu' : p < .3 ? 'Encer' : p < .7 ? 'Sedang' : 'Pekat');
-    $('garam-note').textContent = 'Skala indikator 0 – ' + CFG.garamMax + (G && G.unit ? ' ' + G.unit : '');
+    $('garam-unit').textContent = G ? G.unit : CFG.tds.unit;
+    $('tds-arc').style.strokeDashoffset = (157.1 * (1 - p)).toFixed(1);
+    $('tds-needle').style.transform = 'rotate(' + (-90 + 180 * p).toFixed(1) + 'deg)';
+    $('beaker-milk').style.opacity = (p * .9).toFixed(2);
+    var nC = g === null ? 2 : Math.max(1, Math.round(p * 12));
+    Array.prototype.forEach.call($('shaker').querySelectorAll('.crystal'), function (el, i) { el.style.display = i < nC ? '' : 'none'; });
+    tag($('garam-tag'), st[0], st[1]);
+    var u = CFG.tds.unit;
+    $('tds-zones').innerHTML = ['Rendah < ' + CFG.tds.rendah, 'Sedang', 'Pekat ≥ ' + CFG.tds.pekat].map(function (z, i) {
+      return '<span class="' + (i === st[2] ? 'is-on' : '') + '">' + z + '</span>';
+    }).join('');
+    $('garam-note').textContent = 'Skala meter 0 – ' + CFG.tds.max + ' ' + u + (g !== null && g > CFG.tds.max ? ' · nilai melebihi skala' : '');
     $('garam-key').textContent = G ? 'ESP32: ' + G.key : 'menunggu data';
   }
 
@@ -546,16 +599,30 @@
   });
 
   /* =====================================================================
-     RIWAYAT DATA — 3x sehari, digabung terus dari hari ke hari
+     RIWAYAT DATA — 8x sehari (tiap 3 jam), digabung terus dari hari ke hari
      ===================================================================== */
   var HKEY = 'telur-history';
+  var daySpan = load('telur-day-span', 7);   // default tampilkan 7 hari terakhir (0 = semua)
+  var DAY_OPTS = [
+    { v: 7, label: '7 Hari' },
+    { v: 3, label: '3 Hari' },
+    { v: 1, label: 'Hari Ini' },
+    { v: 14, label: '14 Hari' },
+    { v: 0, label: 'Semua Hari' }
+  ];
+
   function history() { return load(HKEY, []); }
+  function filteredHistory() {
+    var H = history();
+    if (!daySpan || !H.length) return H;
+    var topDay = H.reduce(function (m, r) { return Math.max(m, r.day || 1); }, S.day || 1);
+    return H.filter(function (r) { return (topDay - (r.day || 1)) < daySpan; });
+  }
   function sesiNow(d) {
     d = d || new Date();
-    var h = d.getHours() + d.getMinutes() / 60, list = CFG.sesi, idx = -1, date = new Date(d), prev = false;
+    var h = d.getHours() + d.getMinutes() / 60, list = CFG.sesi, idx = 0;
     for (var i = 0; i < list.length; i++) if (h >= list[i].from) idx = i;
-    if (idx < 0) { idx = list.length - 1; date.setDate(date.getDate() - 1); prev = true; }   // dini hari = sesi malam kemarin
-    return { idx: idx, name: list[idx].name, date: ymd(date), key: ymd(date) + '#' + idx, prev: prev };
+    return { idx: idx, name: list[idx].name, date: ymd(d), key: ymd(d) + '#' + idx, prev: false };
   }
   function fresh() {
     var t = Math.max(S.slave[1].t, S.slave[2].t);
@@ -566,39 +633,40 @@
     if (!force && H.some(function (r) { return r.key === s.key; })) return;
     if (!force && !fresh()) return;
     var rec = { key: force ? s.key + '#m' + Date.now() : s.key, t: new Date().toISOString(), date: s.date, sesi: s.name,
-      day: s.prev && S.espDay === null ? Math.max(1, S.day - 1) : S.day };
+      day: S.day };
     FIELDS.forEach(function (f) { rec[f] = num(f); });
     rec.garamUnit = S.vals.garam ? S.vals.garam.unit : '';
     rec.lampu = S.heater === null ? null : S.heater ? 1 : 0;
     H.push(rec);
-    if (H.length > 2000) H = H.slice(-2000);
+    if (H.length > 3000) H = H.slice(-3000);
     save(HKEY, H);
     renderHistory();
     toast('Data sesi ' + s.name + ' tersimpan');
   }
 
   function renderHistory() {
-    var H = history();
-    tag($('hist-count'), H.length ? 'ok' : 'idle', H.length + ' data');
-    var rows = H.slice().reverse().slice(0, 60).map(function (r) {
+    var allH = history(), H = filteredHistory();
+    var lblCount = daySpan && allH.length !== H.length ? H.length + ' / ' + allH.length + ' data' : H.length + ' data';
+    tag($('hist-count'), H.length ? 'ok' : 'idle', lblCount);
+    var rows = H.slice().reverse().slice(0, 120).map(function (r) {
       var d = new Date(r.t), f = function (v) { return v === null || v === undefined ? '—' : fmtNum(v); };
       return '<tr><td>' + ymd(d) + ' ' + hhmm(d) + '</td><td>' + r.day + '</td><td>' + esc(r.sesi) + '</td><td>' + f(r.garam) + '</td><td>' + f(r.suhuAir) +
         '</td><td>' + f(r.level) + '</td><td>' + f(r.humIn) + '</td><td>' + f(r.humOut) + '</td><td>' + f(r.suhuRuang) + '</td><td>' +
         (r.lampu === null ? '—' : r.lampu ? 'ON' : 'OFF') + '</td></tr>';
     }).join('');
-    $('hist-body').innerHTML = rows || '<tr><td class="empty" colspan="10">Belum ada data tersimpan</td></tr>';
-    renderSesi(H);
+    $('hist-body').innerHTML = rows || '<tr><td class="empty" colspan="10">Belum ada data pada rentang hari ini</td></tr>';
+    renderSesi(allH);
     renderChart();
   }
   function renderSesi(H) {
     var now = sesiNow();
-    $('sesi-info').textContent = 'Disimpan 3× sehari: ' + CFG.sesi.map(function (s) { return s.name + ' ' + pad(s.from) + '.00'; }).join(' · ');
+    $('sesi-info').textContent = 'Disimpan setiap 3 jam (8× sehari)';
     $('sesi-row').innerHTML = CFG.sesi.map(function (s, i) {
       var rec = H.filter(function (r) { return r.key === now.date + '#' + i; })[0], cls = '', st;
-      if (rec) { cls = 'done'; st = '✓ Tersimpan ' + hhmm(new Date(rec.t)); }
-      else if (i === now.idx) { cls = 'now'; st = 'Berjalan, menunggu data'; }
-      else if (i < now.idx) st = 'Terlewat (halaman tertutup)';
-      else st = 'Mulai ' + pad(s.from) + '.00';
+      if (rec) { cls = 'done'; st = '✓ ' + hhmm(new Date(rec.t)); }
+      else if (i === now.idx) { cls = 'now'; st = 'Berjalan'; }
+      else if (i < now.idx) st = 'Terlewat';
+      else st = 'Mulai ' + s.name;
       return '<div class="sesi ' + cls + '"><b>' + s.name + '</b><em>' + st + '</em></div>';
     }).join('');
   }
@@ -616,13 +684,23 @@
       Array.prototype.forEach.call(this.children, function (x) { x.classList.toggle('is-active', x === b); });
       renderChart();
     });
+
+    $('day-tabs').innerHTML = DAY_OPTS.map(function (d) {
+      return '<button type="button" role="tab" data-d="' + d.v + '" class="' + (d.v === daySpan ? 'is-active' : '') + '">' + d.label + '</button>';
+    }).join('');
+    $('day-tabs').addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      daySpan = parseInt(b.dataset.d, 10); save('telur-day-span', daySpan);
+      Array.prototype.forEach.call(this.children, function (x) { x.classList.toggle('is-active', x === b); });
+      renderHistory();
+    });
   }
   function renderChart() {
-    var H = history(), g = GROUPS.filter(function (x) { return x.id === group; })[0] || GROUPS[0];
+    var H = filteredHistory(), g = GROUPS.filter(function (x) { return x.id === group; })[0] || GROUPS[0];
     var empty = $('chart-empty');
     if (typeof Chart === 'undefined') { empty.textContent = 'Grafik tidak bisa dimuat (library Chart.js gagal diunduh). Periksa koneksi internet.'; empty.style.display = 'flex'; return; }
     empty.style.display = H.length ? 'none' : 'flex';
-    var unit = g.id === 'garam' ? ((H.length && H[H.length - 1].garamUnit) || '') : g.unit;
+    var unit = g.id === 'garam' ? ((H.length && H[H.length - 1].garamUnit) || CFG.tds.unit) : g.unit;
     var labels = H.map(function (r) { return 'H' + r.day + ' ' + r.sesi; });
     var ds = g.fields.map(function (f) {
       return { label: META[f].label, data: H.map(function (r) { return r[f] === undefined ? null : r[f]; }),
@@ -639,7 +717,7 @@
           plugins: {
             legend: { labels: { color: '#cbd5e1', boxWidth: 12, boxHeight: 12, usePointStyle: true, font: { weight: '600' } } },
             tooltip: { backgroundColor: 'rgba(15,23,42,.95)', borderColor: 'rgba(148,163,184,.3)', borderWidth: 1, padding: 10,
-              callbacks: { title: function (it) { var r = history()[it[0].dataIndex]; if (!r) return ''; var d = new Date(r.t); return 'Hari ' + r.day + ' · ' + r.sesi + ' (' + ymd(d) + ' ' + hhmm(d) + ')'; } } }
+              callbacks: { title: function (it) { var r = filteredHistory()[it[0].dataIndex]; if (!r) return ''; var d = new Date(r.t); return 'Hari ' + r.day + ' · ' + r.sesi + ' (' + ymd(d) + ' ' + hhmm(d) + ')'; } } }
           },
           scales: {
             x: { ticks: { color: '#94a3b8', maxRotation: 0, autoSkip: true }, grid: { color: 'rgba(148,163,184,.08)' } },
@@ -695,6 +773,12 @@
       localStorage.setItem('cycleStart', new Date().toDateString());
       sessionStorage.removeItem(DAY_KEY);
     } catch (e) {}
+    if (CFG.sbUrl && CFG.sbKey && CFG.sbKey.indexOf('TEMPEL_') === -1) {
+      fetch(CFG.sbUrl + '/rest/v1/mqtt_messages?id=gt.0', {
+        method: 'DELETE',
+        headers: { 'apikey': CFG.sbKey }
+      }).catch(function () {});
+    }
     S.espDay = null; lowArmed = true;
     var p = levelPct(); if (p !== null) save('telur-level-base', Math.round(p * 10) / 10);
     closeOv('reset-overlay');
@@ -732,7 +816,7 @@
     document.querySelectorAll('.bn').forEach(function (b, k) { b.classList.toggle('is-active', k === cur); });
     document.querySelectorAll('#slide-dots i').forEach(function (d, k) { d.classList.toggle('is-active', k === cur); });
     moveGlider();
-    if (PAGES[cur] === 'grafik') { renderHistory(); if (chart) chart.resize(); }
+    if (PAGES[cur] === 'grafik') { syncFromSupabase(); renderHistory(); if (chart) chart.resize(); }
     fitHeight();
     if (!fromHash && location.hash.slice(1) !== PAGES[cur]) { try { history_.replaceState(null, '', '#' + PAGES[cur]); } catch (e) {} }
     if (changed) window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -840,12 +924,112 @@
     if (tickN % 30 === 0) { maybeSample(); renderSesi(history()); }
   }
 
+  /* =====================================================================
+     SOROT BAGIAN KOTAK — ketuk indikator, bagian alat yang sesuai menyala
+     ===================================================================== */
+  var focusKey = null, focusTimer;
+  var FOCUS_TXT = {
+    level: 'Sensor ketinggian air', tds: 'Sensor TDS',
+    temp: 'Sensor suhu air', hum: 'Kelembaban dalam kotak', lamp: 'Lampu'
+  };
+  function setFocus(k) {
+    if (k === focusKey) k = null;          // ketuk lagi = kembali normal
+    focusKey = k;
+    document.querySelectorAll('[data-focus]').forEach(function (el) { el.classList.toggle('is-focus', el.dataset.focus === k); });
+    $('scene').setAttribute('data-focus', k || '');
+    var hint = $('hud-hint');
+    hint.classList.remove('hide'); hint.classList.toggle('focus', !!k);
+    $('hud-hint-text').textContent = k ? 'Menyorot: ' + FOCUS_TXT[k] : 'Geser untuk memutar';
+    if (window.TELUR3D && window.TELUR3D.focus) window.TELUR3D.focus(k);
+    clearTimeout(focusTimer);
+    if (k) focusTimer = setTimeout(function () { setFocus(k); }, 12000);   // kembali normal otomatis
+  }
+  document.querySelectorAll('[data-focus]').forEach(function (el) {
+    el.addEventListener('click', function (e) {
+      e.stopPropagation(); setFocus(el.dataset.focus);
+      if (el.classList.contains('stat') && window.innerWidth < 720) $('scene').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  });
+   /* ============ SINKRONISASI SUPABASE ============ */
+  function syncFromSupabase() {
+    if (!CFG.sbUrl || !CFG.sbKey || CFG.sbKey.indexOf('TEMPEL_') !== -1) return;
+
+    fetch(CFG.sbUrl + '/rest/v1/mqtt_messages?select=topic,payload,tanggal_sesi,sesi,created_at&order=created_at.asc&limit=1000', {
+      headers: { 'apikey': CFG.sbKey }
+    })
+    .then(function (res) { return res.ok ? res.json() : []; })
+    .then(function (rows) {
+      if (!rows || !rows.length) return;
+
+      var map = {};
+      var sesiIdx = {
+        '00.00': 0, '03.00': 1, '06.00': 2, '09.00': 3,
+        '12.00': 4, '15.00': 5, '18.00': 6, '21.00': 7
+      };
+      var startStr = load('cycleStart', null) || new Date().toDateString();
+      var startDay = new Date(startStr);
+
+      rows.forEach(function (row) {
+        var idx = sesiIdx[row.sesi] !== undefined ? sesiIdx[row.sesi] : 0;
+        var key = row.tanggal_sesi + '#' + idx;
+        if (!map[key]) {
+          var rowDate = new Date(row.tanggal_sesi + 'T00:00:00');
+          var calcDay = Math.max(1, Math.floor((rowDate - startDay) / 864e5) + 1);
+          map[key] = {
+            key: key, t: row.created_at, date: row.tanggal_sesi, sesi: row.sesi, day: calcDay,
+            garam: null, suhuAir: null, level: null, humIn: null, humOut: null, suhuRuang: null,
+            garamUnit: CFG.tds.unit, lampu: null
+          };
+        }
+        var rec = map[key];
+        var tail = row.topic.split('/').pop();
+
+        if (tail === 'led') {
+          rec.lampu = isOn(row.payload) ? 1 : 0;
+        } else if (tail === 'siklus') {
+          var mm = row.payload.match(/HARI:(\d+)/i);
+          if (mm) rec.day = parseInt(mm[1], 10);
+        } else if (tail === '1' || tail === '2') {
+          var used = {};
+          parsePairs(row.payload).forEach(function (kv, i) {
+            if (/^(hari|day)$/i.test(kv[0])) {
+              var dn = parseInt(kv[1], 10);
+              if (dn > 0) rec.day = dn;
+              return;
+            }
+            var id = pickSlot(+tail, kv[0], i, used);
+            if (!id) return;
+            used[id] = 1;
+            if (id === 'heater') rec.lampu = isOn(kv[1]) ? 1 : 0;
+            else {
+              var v = splitVal(kv[1]);
+              if (!isNaN(v.n)) rec[id] = v.n;
+              if (id === 'garam' && v.unit) rec.garamUnit = v.unit;
+            }
+          });
+        }
+      });
+
+      var merged = {};
+      history().forEach(function (r) { merged[r.key] = r; });
+      Object.keys(map).forEach(function (k) { merged[k] = map[k]; });
+
+      var finalArr = Object.keys(merged).sort().map(function (k) { return merged[k]; });
+      save(HKEY, finalArr);
+      renderHistory();
+    })
+    .catch(function (err) { console.warn('Gagal memuat riwayat Supabase:', err); });
+  }
+
+  
+   
   /* ============ MULAI ============ */
   buildScene(); buildTabs();
   cycle(); renderAll(); renderHistory();
   go(location.hash.slice(1));
   tick(); setInterval(tick, 1000);
   connect();
+   syncFromSupabase();
 
   // Untuk uji coba lewat Console browser:
   window.showDay7Alert = function () { openOv('day7-overlay', 'day7-close', [200, 100, 200]); };
